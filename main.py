@@ -1,7 +1,7 @@
 import tkinter as tk
-from pages import StartPage, BookDataPage, DndClassPage
+from pages import StartPage, BookDataPage, DndClassPage, RacePage
 
-pages = (StartPage, BookDataPage, DndClassPage)
+pages = (StartPage, BookDataPage, DndClassPage, RacePage)
 
 class MainApp(tk.Tk):
     def __init__(self, *args, **kwargs):
