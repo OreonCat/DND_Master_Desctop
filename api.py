@@ -1,3 +1,6 @@
+import os
+
+from PIL import Image, ImageTk
 import requests
 
 class ApiConnection:
@@ -76,5 +79,34 @@ class ApiConnection:
             cls.username = cls.get("my_username")["username"]
         return cls.username
 
+#http://127.0.0.1:8000/media/characters/photo_2025-11-23_10-16-40.jpg
+
+class ImageWorks:
+    media_root = "media/"
+    @classmethod
+    def get_image(cls, url):
+        file_name = url.split("/")[-1]
+        if file_name not in os.listdir(cls.media_root):
+            cls.download_image(url, file_name)
+        return cls.media_root + file_name
+
+    @classmethod
+    def download_image(cls, url, file_name):
+        print(f"Download {url}")
+        try:
+            response = requests.get(url, stream=True)
+        except requests.exceptions.RequestException as e:
+            print(e)
+        else:
+            with open(cls.media_root + file_name, "wb") as f:
+                for chunk in response.iter_content(1024):
+                    f.write(chunk)
+
+    @classmethod
+    def get_image_tk(cls, url, width=100, height=100):
+        image_pil = Image.open(cls.get_image(url))
+        image_pil.thumbnail((height, width))
+        image_tk = ImageTk.PhotoImage(image_pil)
+        return image_tk
 
 

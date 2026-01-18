@@ -8,7 +8,7 @@ class MainApp(tk.Tk):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.title("DND MASTER")
-        self.geometry("800x600")
+        self.geometry("1200x700")
         self.frames = {}
         self.config(background = "#fcca9a")
 
