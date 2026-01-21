@@ -34,19 +34,15 @@ class Skill:
         self.is_proficient = is_proficient
         self.character_link = character_link
 
-    def make_proficient(self, val_label, button):
+    def make_proficient(self):
         if not self.is_proficient:
             self.is_proficient = True
             self.value += self.character_link.proficient_bonus
-            val_label.config(text = str(self.value))
-            button.config(text="■", command=lambda: self.make_not_proficient(val_label, button))
 
-    def make_not_proficient(self, val_label, button):
+    def make_not_proficient(self):
         if self.is_proficient:
             self.is_proficient = False
             self.value -= self.character_link.proficient_bonus
-            val_label.config(text = str(self.value))
-            button.config(text="□", command=lambda: self.make_proficient(val_label, button))
 
 class Ability:
     def __init__(self, id, ability, value, is_proficient, saving_throw, character_link):
@@ -58,41 +54,28 @@ class Ability:
         self.skills = []
         self.character_link = character_link
 
-    def increase(self, label, st_label, skill_labels):
+    def increase(self):
         self.value = self.value + 1
         self.saving_throw = self.saving_throw + 1
-        label.config(text=str(self.value))
-        st_label.config(text=str(self.saving_throw))
         for skill in self.skills:
             skill.value += 1
-        for skill_label in skill_labels:
-            new_val = int(skill_label.cget("text")) + 1
-            skill_label.config(text=str(new_val))
 
-    def decrease(self, label, st_label, skill_labels):
+    def decrease(self):
         self.value = self.value - 1
         self.saving_throw = self.saving_throw - 1
-        label.config(text=str(self.value))
-        st_label.config(text=str(self.saving_throw))
         for skill in self.skills:
             skill.value -= 1
-        for skill_label in skill_labels:
-            new_val = int(skill_label.cget("text")) - 1
-            skill_label.config(text=str(new_val))
 
-    def make_proficient(self, st_label, button):
+    def make_proficient(self):
         if not self.is_proficient:
             self.is_proficient = True
             self.saving_throw += self.character_link.proficient_bonus
-            st_label.config(text=str(self.saving_throw))
-            button.config(text="■", command=lambda: self.make_not_proficient(st_label, button))
 
-    def make_not_proficient(self, st_label, button):
+    def make_not_proficient(self):
         if self.is_proficient:
             self.is_proficient = False
             self.saving_throw -= self.character_link.proficient_bonus
-            st_label.config(text=str(self.saving_throw))
-            button.config(text="□", command=lambda: self.make_proficient(st_label, button))
+
 
 class Character:
     get_link = "characters"

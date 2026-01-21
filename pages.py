@@ -110,78 +110,144 @@ class CharPage(SrollFrame):
     def __init__(self, parent, controller, character):
         super().__init__(parent, character.name ,lambda: controller.show_frame(CharactersPage), lambda: controller.show_frame(SettingsPage))
 
+        self.character = character
+
+        #Character info frame
         info_frame = tk.Frame(self.new_frame, bg="#fcca9a")
 
+        #character image
         image_tk = ImageWorks.get_image_tk(character.image, 400, 300)
         image = tk.Label(info_frame, image=image_tk, width=300, height=400)
         image.grid(row=0, column=0, rowspan=10)
         image.image = image_tk
 
-        GenericLabel(info_frame, text=character.name, font_weight="bold").grid(row=0, column=1, padx=10)
-        GenericLabel(info_frame, text=f"Раса: {character.race}").grid(row=1, column=1, padx=10)
-        GenericLabel(info_frame, text=f"Предыстория: {character.background}").grid(row=2, column=1, padx=10)
-        GenericLabel(info_frame, text=f"Уровень: {character.level} КД: {character.armor_class}").grid(row=3, column=1, padx=10)
-        GenericLabel(info_frame, text=f"Бонус мастерства: +{character.proficient_bonus}").grid(row=4, column=1, padx=10)
-        GenericLabel(info_frame, text=f"Скорость: {character.speed}").grid(row=5, column=1, padx=10)
-        GenericLabel(info_frame, text=f"HP: {character.hp}/{character.max_hp}").grid(row=6, column=1, padx=10)
-        GenericLabel(info_frame, text=f"Инициатива: {character.initiative}").grid(row=7, column=1, padx=10)
-        GenericLabel(info_frame, text=f"ММ: {character.cooper_coins} СМ: {character.silver_coins} ЗМ: {character.gold_coins}").grid(row=8, column=1, padx=10)
-        ttk.Button(info_frame, text="Вывести в золото").grid(row=9, column=1)
+        #character info labels
+        self.name_label = GenericLabel(info_frame, text=character.name, font_weight="bold")
+        self.race_label = GenericLabel(info_frame, text=f"Раса: {character.race}")
+        self.background_label = GenericLabel(info_frame, text=f"Предыстория: {character.background}")
+        self.level_label = GenericLabel(info_frame, text=f"Уровень: {character.level} КД: {character.armor_class}")
+        self.proficient_bonus_label = GenericLabel(info_frame, text=f"Бонус мастерства: +{character.proficient_bonus}")
+        self.speed_label = GenericLabel(info_frame, text=f"Скорость: {character.speed}")
+        self.hp_label = GenericLabel(info_frame, text=f"HP: {character.hp}/{character.max_hp}")
+        self.initiative_label = GenericLabel(info_frame, text=f"Инициатива: {character.initiative}")
+        self.coin_label = GenericLabel(info_frame, text=f"ММ: {character.cooper_coins} СМ: {character.silver_coins} ЗМ: {character.gold_coins}")
+
+        #button "go to gold"
+        ttk.Button(info_frame, text="Вывести в золото", command=lambda: self.renew_coin_label()).grid(row=9, column=1)
+
+        #character labels grid
+        self.name_label.grid(row=0, column=1, padx=10)
+        self.race_label.grid(row=1, column=1, padx=10)
+        self.background_label.grid(row=2, column=1, padx=10)
+        self.level_label.grid(row=3, column=1, padx=10)
+        self.proficient_bonus_label.grid(row=4, column=1, padx=10)
+        self.speed_label.grid(row=5, column=1, padx=10)
+        self.hp_label.grid(row=6, column=1, padx=10)
+        self.initiative_label.grid(row=7, column=1, padx=10)
+        self.coin_label.grid(row=8, column=1, padx=10)
         info_frame.pack(padx=10, pady=10)
 
-        self.abilities_frame = tk.Frame(self.new_frame, bg="#fcca9a")
+        abilities_frame = self.get_abilities_frame()
+        abilities_frame.pack(padx=10, pady=10)
+
+    def get_abilities_frame(self):
+        abilities_frame = tk.Frame(self.new_frame, bg="#fcca9a")
         ability_iterator = 0
-        for ability in character.abilities:
-            self.ability_gen(ability, ability_iterator)
+        for ability in self.character.abilities:
+            ability_frame = AbilitySubFrame(abilities_frame, ability)
+            ability_frame.grid(row=0, column=ability_iterator, padx=5, pady=5, sticky="n")
             ability_iterator += 1
-        self.abilities_frame.pack(padx=10, pady=10)
+        return abilities_frame
 
-    def ability_gen(self, ability, iterator):
-        ability_frame = tk.Frame(self.abilities_frame, background="#b35600")
+    def renew_coin_label(self):
+        self.coin_label.config(text=f"ММ: 1250 СМ: {self.character.silver_coins} ЗМ: {self.character.gold_coins}")
 
-        GenericLabel(ability_frame, text=ability.ability, bg="#b35600", fg="white", font_weight="bold").grid(row=0, column=0)
-        ability_value = GenericLabel(ability_frame, text=ability.value, bg="#b35600", fg="white")
-        ability_value.grid(row=0, column=3)
+#SubFrame
+class AbilitySubFrame(tk.Frame):
+    def __init__(self, parent, ability):
+        tk.Frame.__init__(self, parent, bg="#b35600")
+        self.ability = ability
+        self.skill_frames = []
 
-        GenericLabel(ability_frame, text="Спасбросок", bg="#b35600", fg="white").grid(row=1, column=0)
-        saving_trow_value = GenericLabel(ability_frame, text=ability.saving_throw, bg="#b35600", fg="white")
-        saving_trow_value.grid(row=1, column=3)
+        ability_name_label = GenericLabel(self, text=ability.ability, bg="#b35600", fg="white", font_weight="bold")
+        self.ability_value_label = GenericLabel(self, text=ability.value, bg="#b35600", fg="white")
 
+        ability_name_label.grid(row=0, column=0)
+        self.ability_value_label.grid(row=0, column=3)
 
+        ttk.Button(self, text="-", width=1,command=lambda: self.decrease()).grid(row=0,column=2)
+        ttk.Button(self, text="+", width=1,command=lambda: self.increase()).grid(row=0,column=4)
+
+        st_label = GenericLabel(self, text="Спасбросок", bg="#b35600", fg="white")
+        self.st_value_label = GenericLabel(self, text=ability.saving_throw, bg="#b35600", fg="white")
+        st_label.grid(row=1, column=0)
+        self.st_value_label.grid(row=1, column=3)
+        self.proficient_button = ttk.Button(self, width=1)
         if ability.is_proficient:
-            prof_button = ttk.Button(ability_frame, text="■", width=1, command=lambda: ability.make_not_proficient(saving_trow_value, prof_button))
+            self.proficient_button.config(text="■", command=lambda: self.make_not_proficient())
         else:
-            prof_button = ttk.Button(ability_frame, text="□", width=1, command=lambda: ability.make_proficient(saving_trow_value, prof_button))
-        prof_button.grid(row=1, column=4)
+            self.proficient_button.config(text="□", command=lambda: self.make_proficient())
+        self.proficient_button.grid(row=1, column=4)
 
-        skill_iterator = 2
-        skill_value_labels = []
-        for skill in ability.skills:
-            GenericLabel(ability_frame, text=skill.skill, bg="#b35600", fg="white").grid(row=skill_iterator, column=0)
-            skill_value_label = GenericLabel(ability_frame, text=skill.value, bg="#b35600", fg="white")
-            skill_value_label.grid(row=skill_iterator, column=3)
-            skill_value_labels.append(skill_value_label)
-            self.skill_buttons(skill, ability_frame, skill_value_label, skill_iterator)
-            skill_iterator += 1
+        iterator = 2
+        for skill in self.ability.skills:
+            self.insert_skill_frames(skill, iterator)
+            iterator += 1
 
-        ttk.Button(ability_frame, text="-", width=1,
-                   command=lambda: ability.decrease(ability_value, saving_trow_value, skill_value_labels)).grid(row=0,
-                                                                                            column=2)
-        ttk.Button(ability_frame, text="+", width=1,
-                   command=lambda: ability.increase(ability_value, saving_trow_value, skill_value_labels)).grid(row=0,
-                                                                                            column=4)
+    def increase(self):
+        self.ability.increase()
+        self.ability_value_label.config(text=self.ability.value)
+        self.st_value_label.config(text=self.ability.saving_throw)
+        for skill_frame in self.skill_frames:
+            skill_frame.renew_value_label()
 
-        ability_frame.grid(row=0, column=iterator, padx=5, pady=5, sticky="n")
+    def decrease(self):
+        self.ability.decrease()
+        self.ability_value_label.config(text=self.ability.value)
+        self.st_value_label.config(text=self.ability.saving_throw)
+        for skill_frame in self.skill_frames:
+            skill_frame.renew_value_label()
 
-    def skill_buttons(self, skill, ability_frame, skill_value_label, iterator):
-        if skill.is_proficient:
-            skill_button = ttk.Button(ability_frame, text="■", width=1,
-                                      command=lambda: skill.make_not_proficient(skill_value_label, skill_button))
+    def make_proficient(self):
+        self.ability.make_proficient()
+        self.st_value_label.config(text=self.ability.saving_throw)
+        self.proficient_button.config(text="■", command=lambda: self.make_not_proficient())
+
+    def make_not_proficient(self):
+        self.ability.make_not_proficient()
+        self.st_value_label.config(text=self.ability.saving_throw)
+        self.proficient_button.config(text="□", command=lambda: self.make_proficient())
+
+    def insert_skill_frames(self, skill, iterator):
+        skill_frame = SkillPackedSubController(self, skill)
+        skill_frame.skill_name_label.grid(row=iterator, column=0)
+        skill_frame.skill_value_label.grid(row=iterator, column=3)
+        skill_frame.proficient_button.grid(row=iterator, column=4)
+        self.skill_frames.append(skill_frame)
+
+
+
+class SkillPackedSubController:
+    def __init__(self, parent, skill):
+        self.skill = skill
+        self.skill_name_label = GenericLabel(parent, text=skill.skill, bg="#b35600", fg="white")
+        self.skill_value_label = GenericLabel(parent, text=skill.value, bg="#b35600", fg="white")
+        self.proficient_button = ttk.Button(parent, width=1)
+        if self.skill.is_proficient:
+            self.proficient_button.config(text="■", command=lambda: self.make_not_proficient())
         else:
-            skill_button = ttk.Button(ability_frame, text="□", width=1,
-                                      command=lambda: skill.make_proficient(skill_value_label, skill_button))
-        skill_button.grid(row=iterator, column=4)
+            self.proficient_button.config(text="□", command=lambda: self.make_proficient())
 
+    def renew_value_label(self):
+        self.skill_value_label.config(text=self.skill.value)
 
+    def make_proficient(self):
+        self.skill.make_proficient()
+        self.renew_value_label()
+        self.proficient_button.config(text="■", command=lambda: self.make_not_proficient())
 
+    def make_not_proficient(self):
+        self.skill.make_not_proficient()
+        self.renew_value_label()
+        self.proficient_button.config(text="□", command=lambda: self.make_proficient())
 
