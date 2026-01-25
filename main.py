@@ -1,14 +1,15 @@
 import tkinter as tk
-from pages import StartPage, BookDataPage, DndClassPage, RacePage, LoginPage, SettingsPage, CharactersPage
+from pages import StartPage, BookDataPage, DndClassPage, RacePage, LoginPage, SettingsPage, CharactersPage, \
+    BackgroundPage
 
 
 class MainApp(tk.Tk):
-    pages = (StartPage, BookDataPage, DndClassPage, RacePage, LoginPage, SettingsPage, CharactersPage)
+    pages = (StartPage, BookDataPage, DndClassPage, RacePage, LoginPage, SettingsPage, BackgroundPage, CharactersPage)
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.title("DND MASTER")
-        self.geometry("1200x700")
+        self.geometry("1200x750")
         self.frames = {}
         self.config(background = "#fcca9a")
 
@@ -39,6 +40,7 @@ class MainApp(tk.Tk):
     def add_to_frame(self, page, page_name, pure_data: None):
         frame = page(self.container, self, pure_data)
         self.frames[page_name] = frame
+
         frame.grid(row=0, column=0, sticky="nsew")
 
 

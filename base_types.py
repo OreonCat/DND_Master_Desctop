@@ -31,3 +31,37 @@ class SrollFrame(AppFrame):
 class GenericLabel(tk.Label):
     def __init__(self, parent, bg="#fcca9a", font_family="Arial", font_size=14, font_weight = "", *args, **kwargs):
         super().__init__(parent, bg=bg, font=(font_family, font_size, font_weight), *args, **kwargs)
+
+class BookDataComboBox(ttk.Combobox):
+    def __init__(self, parent, data_class, *args, **kwargs):
+        self.display_text = data_class.get_names()
+        self.values_collection = data_class.get_values()
+        super().__init__(parent, values=self.display_text, *args, **kwargs)
+
+    def get(self):
+        actual_choice = super().get()
+        return self.values_collection[actual_choice] if actual_choice != "" else ""
+
+class IntEntry(ttk.Entry):
+    def __init__(self, parent, min_value=None, max_value=None, *args, **kwargs):
+        self.var = tk.StringVar()
+        super().__init__(parent, textvariable=self.var, *args, **kwargs)
+        self.var.trace("w", self.check_int)
+        self.min_value = min_value
+        self.max_value = max_value
+
+    def check_int(self, *args):
+        check_var = self.var.get()
+        if not check_var == "" and not check_var == "-" and not check_var.lstrip('-').isdigit():
+            self.var.set(self.var.get()[:-1])
+        else:
+            if not self.var.get() == "" and not self.var.get() == "-":
+                if self.min_value is not None and int(self.var.get()) < self.min_value:
+                    self.var.set(str(self.min_value))
+                if self.max_value is not None and int(self.var.get()) > self.max_value:
+                    self.var.set(str(self.max_value))
+
+
+
+
+

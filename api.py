@@ -1,4 +1,5 @@
 import os
+from tkinter import filedialog
 
 from PIL import Image, ImageTk
 import requests
@@ -25,6 +26,15 @@ class ApiConnection:
         full_link = cls.api_link + post_link
         response = requests.post(full_link, data=data)
         return response.json()
+
+    @classmethod
+    def update(cls, update_link, pk, data, files=None):
+        full_link = cls.api_link + update_link + str(pk)
+        if files is None:
+            response = requests.put(full_link, data=data, headers={'Authorization': cls.__get_token()})
+        else:
+            response = requests.put(full_link, data=data, files=files, headers={'Authorization': cls.__get_token()})
+        return response.status_code
 
     @classmethod
     def login(cls, username, password):
@@ -109,4 +119,12 @@ class ImageWorks:
         image_tk = ImageTk.PhotoImage(image_pil)
         return image_tk
 
+    # IN DEVELOP
+    @classmethod
+    def select_image_from_system(cls):
+        file_path = filedialog.askopenfilename(
+            title="Выберите изображение",
+            filetypes=[("Изображения", "*.jpg *.jpeg *.png *.gif *.bmp *.webp")]
+        )
+        return file_path
 

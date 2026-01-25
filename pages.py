@@ -1,10 +1,9 @@
 
 from api import ApiConnection, ImageWorks
-from base_types import AppFrame, GenericLabel, SrollFrame
+from base_types import AppFrame, GenericLabel, SrollFrame, BookDataComboBox, IntEntry
 import tkinter.ttk as ttk
 import tkinter as tk
-from game_objects import DndClass, Race, Character
-
+from game_objects import DndClass, Race, Character, Background
 
 class StartPage(AppFrame):
     def __init__(self, parent, controller):
@@ -18,6 +17,7 @@ class BookDataPage(AppFrame):
         super().__init__(parent, "Книжные данные", lambda: controller.show_frame(StartPage), lambda: controller.show_frame(SettingsPage))
         ttk.Button(self, text="Классы", command=lambda: controller.show_frame(DndClassPage)).pack(padx=10, pady=10)
         ttk.Button(self, text="Расы", command=lambda: controller.show_frame(RacePage)).pack(padx=10, pady=10)
+        ttk.Button(self, text="Предыстории", command=lambda: controller.show_frame(BackgroundPage)).pack(padx=10, pady=10)
 
 class DndClassPage(AppFrame):
     def __init__(self, parent, controller):
@@ -38,6 +38,16 @@ class RacePage(AppFrame):
         else:
             for dnd_race in dnd_races:
                 GenericLabel(self, text=dnd_race.name).pack(padx=10, pady=10)
+
+class BackgroundPage(AppFrame):
+    def __init__(self, parent, controller):
+        super().__init__(parent, "Предыстории", lambda: controller.show_frame(BookDataPage), lambda: controller.show_frame(SettingsPage))
+        dnd_background = Background.get_all()
+        if dnd_background is None:
+            GenericLabel(self, text="Необходимо авторизоваться").pack(padx=10, pady=10)
+        else:
+            for dnd_background in dnd_background:
+                GenericLabel(self, text=dnd_background.name).pack(padx=10, pady=10)
 
 class LoginPage(AppFrame):
     def __init__(self, parent, controller):
@@ -94,7 +104,7 @@ class CharactersPage(SrollFrame):
         label.image = image_tk
 
         GenericLabel(char_frame, text=character.name, bg="white").grid(row=0, column=1)
-        GenericLabel(char_frame, text=f"{character.dnd_class} {character.level}ур", bg="white").grid(row=1, column=1)
+        GenericLabel(char_frame, text=f"{character.dnd_class.name} {character.level}ур", bg="white").grid(row=1, column=1)
         GenericLabel(char_frame, text=f"{character.hp}/{character.max_hp}", bg="white").grid(row=2, column=1)
 
         char_frame.pack(padx=10, pady=10)
@@ -111,6 +121,8 @@ class CharPage(SrollFrame):
         super().__init__(parent, character.name ,lambda: controller.show_frame(CharactersPage), lambda: controller.show_frame(SettingsPage))
 
         self.character = character
+        self.update_is_not_saved = False
+        self.edit_info_display = False
 
         #Character info frame
         info_frame = tk.Frame(self.new_frame, bg="#fcca9a")
@@ -120,11 +132,15 @@ class CharPage(SrollFrame):
         image = tk.Label(info_frame, image=image_tk, width=300, height=400)
         image.grid(row=0, column=0, rowspan=10)
         image.image = image_tk
+        self.update_ins_label = GenericLabel(info_frame, text="Изменения не сохранены")
+        self.update_button = ttk.Button(info_frame, text="Сохранить изменения", command=lambda: self.update_character())
 
         #character info labels
         self.name_label = GenericLabel(info_frame, text=character.name, font_weight="bold")
-        self.race_label = GenericLabel(info_frame, text=f"Раса: {character.race}")
-        self.background_label = GenericLabel(info_frame, text=f"Предыстория: {character.background}")
+        self.edit_info_button = ttk.Button(info_frame, text="Изменить", command=lambda: self.edit_button_on_click())
+        self.dnd_class_label = GenericLabel(info_frame, text=f"Класc: {character.dnd_class.name} | {character.dnd_subclass}")
+        self.race_label = GenericLabel(info_frame, text=f"Раса: {character.race.name}")
+        self.background_label = GenericLabel(info_frame, text=f"Предыстория: {character.background.name}")
         self.level_label = GenericLabel(info_frame, text=f"Уровень: {character.level} КД: {character.armor_class}")
         self.proficient_bonus_label = GenericLabel(info_frame, text=f"Бонус мастерства: +{character.proficient_bonus}")
         self.speed_label = GenericLabel(info_frame, text=f"Скорость: {character.speed}")
@@ -132,23 +148,80 @@ class CharPage(SrollFrame):
         self.initiative_label = GenericLabel(info_frame, text=f"Инициатива: {character.initiative}")
         self.coin_label = GenericLabel(info_frame, text=f"ММ: {character.cooper_coins} СМ: {character.silver_coins} ЗМ: {character.gold_coins}")
 
-        #button "go to gold"
-        ttk.Button(info_frame, text="Вывести в золото", command=lambda: self.renew_coin_label()).grid(row=9, column=1)
-
         #character labels grid
         self.name_label.grid(row=0, column=1, padx=10)
-        self.race_label.grid(row=1, column=1, padx=10)
-        self.background_label.grid(row=2, column=1, padx=10)
-        self.level_label.grid(row=3, column=1, padx=10)
-        self.proficient_bonus_label.grid(row=4, column=1, padx=10)
-        self.speed_label.grid(row=5, column=1, padx=10)
-        self.hp_label.grid(row=6, column=1, padx=10)
-        self.initiative_label.grid(row=7, column=1, padx=10)
-        self.coin_label.grid(row=8, column=1, padx=10)
+        self.edit_info_button.grid(row=0, column=2, padx=10)
+        self.dnd_class_label.grid(row=1, column=1, padx=10)
+        self.race_label.grid(row=2, column=1, padx=10)
+        self.background_label.grid(row=3, column=1, padx=10)
+        self.level_label.grid(row=4, column=1, padx=10)
+        self.proficient_bonus_label.grid(row=5, column=1, padx=10)
+        self.speed_label.grid(row=6, column=1, padx=10)
+        self.hp_label.grid(row=7, column=1, padx=10)
+        self.initiative_label.grid(row=8, column=1, padx=10)
+        self.coin_label.grid(row=9, column=1, padx=10)
         info_frame.pack(padx=10, pady=10)
 
+        # button "go to gold"
+        ttk.Button(info_frame, text="Вывести в золото", command=lambda: self.renew_coin_label()).grid(row=10, column=1)
+
+        #abilities
         abilities_frame = self.get_abilities_frame()
         abilities_frame.pack(padx=10, pady=10)
+
+        # info_changes
+        self.changes_frame = tk.Frame(self.new_frame, bg="#fcca9a")
+        GenericLabel(self.changes_frame, text="Изменить персонажа", font_weight="bold").grid(row=0, column=0, columnspan=2)
+        GenericLabel(self.changes_frame, text="Имя").grid(row=1, column=0)
+        self.name_field = ttk.Entry(self.changes_frame, width=30)
+        GenericLabel(self.changes_frame, text="Класс").grid(row=2, column=0)
+        self.class_field = BookDataComboBox(self.changes_frame, DndClass)
+        GenericLabel(self.changes_frame, text="Раса").grid(row=3, column=0)
+        self.race_field = BookDataComboBox(self.changes_frame, Race)
+        GenericLabel(self.changes_frame, text="Предыстория").grid(row=4, column=0)
+        self.background_field = BookDataComboBox(self.changes_frame, Background)
+        GenericLabel(self.changes_frame, text="Уровень").grid(row=5, column=0)
+        self.level_field = IntEntry(self.changes_frame, width=30, min_value=1, max_value=20)
+        GenericLabel(self.changes_frame, text="Бонус мастерства").grid(row=6, column=0)
+        self.proficient_bonus_field = IntEntry(self.changes_frame, width=30, min_value=0)
+        GenericLabel(self.changes_frame, text="Класс доспеха").grid(row=7, column=0)
+        self.armor_class_field = IntEntry(self.changes_frame, width=30, min_value=0)
+        GenericLabel(self.changes_frame, text="Скорость").grid(row=8, column=0)
+        self.speed_field = IntEntry(self.changes_frame, width=30, min_value=0)
+        GenericLabel(self.changes_frame, text="Max HP").grid(row=9, column=0)
+        self.max_hp_field = IntEntry(self.changes_frame, width=30, min_value=1)
+        GenericLabel(self.changes_frame, text="Инициатива").grid(row=10, column=0)
+        self.initiative_field = IntEntry(self.changes_frame, width=30)
+        GenericLabel(self.changes_frame, text="ММ").grid(row=11, column=0)
+        self.cooper_coins_field = IntEntry(self.changes_frame, width=30, min_value=0)
+        GenericLabel(self.changes_frame, text="СМ").grid(row=12, column=0)
+        self.silver_coins_field = IntEntry(self.changes_frame, width=30, min_value=0)
+        GenericLabel(self.changes_frame, text="ЗМ").grid(row=13, column=0)
+        self.gold_coins_field = IntEntry(self.changes_frame, width=30, min_value=0)
+        GenericLabel(self.changes_frame, text="Подкласс").grid(row=14, column=0)
+        self.subclass_field = ttk.Entry(self.changes_frame, width=30)
+        GenericLabel(self.changes_frame, text="Изображение").grid(row=15, column=0)
+        ttk.Button(self.changes_frame, text="Выбрать", command=lambda: self.select_image()).grid(row=15, column=1)
+        self.image_selected_label = GenericLabel(self.changes_frame)
+        ttk.Button(self.changes_frame, text="Изменить", command=lambda: self.validate_edit_info()).grid(row=17, column=0, columnspan=2)
+        self.selected_image = ""
+
+
+
+        self.name_field.grid(row=1, column=1)
+        self.class_field.grid(row=2, column=1)
+        self.race_field.grid(row=3, column=1)
+        self.background_field.grid(row=4, column=1)
+        self.level_field.grid(row=5, column=1)
+        self.proficient_bonus_field.grid(row=6, column=1)
+        self.armor_class_field.grid(row=7, column=1)
+        self.speed_field.grid(row=8, column=1)
+        self.max_hp_field.grid(row=9, column=1)
+        self.initiative_field.grid(row=10, column=1)
+        self.cooper_coins_field.grid(row=11, column=1)
+        self.silver_coins_field.grid(row=12, column=1)
+        self.gold_coins_field.grid(row=13, column=1)
+        self.subclass_field.grid(row=14, column=1)
 
     def get_abilities_frame(self):
         abilities_frame = tk.Frame(self.new_frame, bg="#fcca9a")
@@ -160,7 +233,65 @@ class CharPage(SrollFrame):
         return abilities_frame
 
     def renew_coin_label(self):
-        self.coin_label.config(text=f"ММ: 1250 СМ: {self.character.silver_coins} ЗМ: {self.character.gold_coins}")
+        self.character.go_to_gold()
+        self.coin_label.config(text=f"ММ: {self.character.cooper_coins} СМ: {self.character.silver_coins} ЗМ: {self.character.gold_coins}")
+        self.unsaved_changes()
+
+    def unsaved_changes(self):
+        if not self.update_is_not_saved:
+            self.update_is_not_saved = True
+            self.update_ins_label.grid(row=11, column=0)
+            self.update_button.grid(row=11, column=1)
+
+
+    def edit_button_on_click(self):
+        if self.edit_info_display:
+            self.changes_frame.pack_forget()
+            self.edit_info_display = False
+        else:
+            self.changes_frame.pack(padx=10, pady=10)
+            self.edit_info_display = True
+
+    def validate_edit_info(self):
+        self.character.change_info(name=self.name_field.get(), dnd_subclass=self.subclass_field.get(),
+                                   max_hp=self.max_hp_field.get(), armor_class=self.armor_class_field.get(),
+                                   initiative=self.initiative_field.get(), cooper_coins=self.cooper_coins_field.get(),
+                                   silver_coins=self.silver_coins_field.get(), gold_coins=self.gold_coins_field.get(),
+                                   level=self.level_field.get(), speed=self.speed_field.get(),
+                                   proficient_bonus=self.proficient_bonus_field.get(), dnd_class=self.class_field.get(),
+                                   race=self.race_field.get(), background=self.background_field.get(),
+                                   selected_image=self.selected_image)
+        self.refresh_labels()
+        self.edit_button_on_click()
+        self.unsaved_changes()
+
+    def refresh_labels(self):
+        self.name_label.config(text=self.character.name)
+        self.dnd_class_label.config(text=f"Класс: {self.character.dnd_class.name} | {self.character.dnd_subclass}")
+        self.race_label.config(text=f"Раса: {self.character.race.name}")
+        self.background_label.config(text=f"Предыстория: {self.character.background.name}")
+        self.level_label.config(text=f"Уровень: {self.character.level} КД: {self.character.armor_class}")
+        self.proficient_bonus_label.config(text=f"Бонус мастерства: +{self.character.proficient_bonus}")
+        self.speed_label.config(text=f"Скорость: {self.character.speed}")
+        self.hp_label.config(text=f"HP: {self.character.hp}/{self.character.max_hp}")
+        self.initiative_label.config(text=f"Инициатива: {self.character.initiative}")
+        self.coin_label.config(text=f"ММ: {self.character.cooper_coins} СМ: {self.character.silver_coins} ЗМ: {self.character.gold_coins}")
+
+    def update_character(self):
+        if self.update_is_not_saved:
+            self.update_is_not_saved = False
+            self.update_button.grid_forget()
+            self.update_ins_label.grid_forget()
+            self.character.update_character()
+
+    # IN DEVELOP
+    def select_image(self):
+        self.selected_image = ImageWorks.select_image_from_system()
+        self.image_selected_label.config(text=self.selected_image)
+        self.image_selected_label.grid(column=0, row=16, columnspan=2)
+
+
+
 
 #SubFrame
 class AbilitySubFrame(tk.Frame):
@@ -168,6 +299,7 @@ class AbilitySubFrame(tk.Frame):
         tk.Frame.__init__(self, parent, bg="#b35600")
         self.ability = ability
         self.skill_frames = []
+        self.character_frame = parent.master.master.master
 
         ability_name_label = GenericLabel(self, text=ability.ability, bg="#b35600", fg="white", font_weight="bold")
         self.ability_value_label = GenericLabel(self, text=ability.value, bg="#b35600", fg="white")
@@ -200,6 +332,7 @@ class AbilitySubFrame(tk.Frame):
         self.st_value_label.config(text=self.ability.saving_throw)
         for skill_frame in self.skill_frames:
             skill_frame.renew_value_label()
+        self.character_frame.unsaved_changes()
 
     def decrease(self):
         self.ability.decrease()
@@ -207,16 +340,19 @@ class AbilitySubFrame(tk.Frame):
         self.st_value_label.config(text=self.ability.saving_throw)
         for skill_frame in self.skill_frames:
             skill_frame.renew_value_label()
+        self.character_frame.unsaved_changes()
 
     def make_proficient(self):
         self.ability.make_proficient()
         self.st_value_label.config(text=self.ability.saving_throw)
         self.proficient_button.config(text="■", command=lambda: self.make_not_proficient())
+        self.character_frame.unsaved_changes()
 
     def make_not_proficient(self):
         self.ability.make_not_proficient()
         self.st_value_label.config(text=self.ability.saving_throw)
         self.proficient_button.config(text="□", command=lambda: self.make_proficient())
+        self.character_frame.unsaved_changes()
 
     def insert_skill_frames(self, skill, iterator):
         skill_frame = SkillPackedSubController(self, skill)
@@ -230,6 +366,7 @@ class AbilitySubFrame(tk.Frame):
 class SkillPackedSubController:
     def __init__(self, parent, skill):
         self.skill = skill
+        self.character_frame = parent.master.master.master.master
         self.skill_name_label = GenericLabel(parent, text=skill.skill, bg="#b35600", fg="white")
         self.skill_value_label = GenericLabel(parent, text=skill.value, bg="#b35600", fg="white")
         self.proficient_button = ttk.Button(parent, width=1)
@@ -245,9 +382,11 @@ class SkillPackedSubController:
         self.skill.make_proficient()
         self.renew_value_label()
         self.proficient_button.config(text="■", command=lambda: self.make_not_proficient())
+        self.character_frame.unsaved_changes()
 
     def make_not_proficient(self):
         self.skill.make_not_proficient()
         self.renew_value_label()
         self.proficient_button.config(text="□", command=lambda: self.make_proficient())
+        self.character_frame.unsaved_changes()
 
