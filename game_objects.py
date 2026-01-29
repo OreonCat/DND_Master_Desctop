@@ -1,4 +1,5 @@
-from api import ApiConnection
+from api import ApiConnection, ImageWorks
+
 
 class BookDataClass:
     get_link = None
@@ -187,6 +188,7 @@ class Character:
         self.abilities = []
 
         self.is_updated = False
+        self.image_is_updated = False
 
     @classmethod
     def get_one(cls, api_result):
@@ -275,8 +277,8 @@ class Character:
         if background != "":
             self.background = Background.return_object_by_id(background)
         if selected_image != "":
-            #IN DEVELOP
-            print(selected_image)
+            self.image_is_updated = True
+            self.image = ImageWorks.copy_image_to_program(selected_image)
 
         self.is_updated = True
 
@@ -298,9 +300,14 @@ class Character:
             "background": self.background.id
         }
 
+
     def update_character(self):
         if self.is_updated:
-            response = ApiConnection.update(self.update_link, self.id, self.generate_update_json())
+            if self.image_is_updated:
+                self.image_is_updated = False
+                response = ApiConnection.update(self.update_link, self.id, self.generate_update_json(), self.image)
+            else:
+                response = ApiConnection.update(self.update_link, self.id, self.generate_update_json())
             if response == 200:
                 print("Character updated successfully")
                 self.is_updated = False

@@ -1,5 +1,8 @@
+import mimetypes
+from datetime import datetime
 import os
 from tkinter import filedialog
+import shutil
 
 from PIL import Image, ImageTk
 import requests
@@ -28,12 +31,16 @@ class ApiConnection:
         return response.json()
 
     @classmethod
-    def update(cls, update_link, pk, data, files=None):
+    def update(cls, update_link, pk, data, image=None):
         full_link = cls.api_link + update_link + str(pk)
-        if files is None:
+        if image is None:
             response = requests.put(full_link, data=data, headers={'Authorization': cls.__get_token()})
         else:
-            response = requests.put(full_link, data=data, files=files, headers={'Authorization': cls.__get_token()})
+            image_name = image.split("/")[-1]
+            mime_type = mimetypes.guess_type(image_name)
+            with open(image, 'rb') as image_file:
+                files = {'image': (image_name, image_file, mime_type)}
+                response = requests.put(full_link, data=data, files=files, headers={'Authorization': cls.__get_token()})
         return response.status_code
 
     @classmethod
@@ -119,7 +126,6 @@ class ImageWorks:
         image_tk = ImageTk.PhotoImage(image_pil)
         return image_tk
 
-    # IN DEVELOP
     @classmethod
     def select_image_from_system(cls):
         file_path = filedialog.askopenfilename(
@@ -127,4 +133,12 @@ class ImageWorks:
             filetypes=[("Изображения", "*.jpg *.jpeg *.png *.gif *.bmp *.webp")]
         )
         return file_path
+
+    @classmethod
+    def copy_image_to_program(cls, file_path):
+        file_type = file_path.split(".")[-1]
+        time_stamp = datetime.now().strftime("%Y%m%d%H%M%S")
+        new_path = cls.media_root + f"uploaded_file_{time_stamp}.{file_type}"
+        shutil.copy2(file_path, new_path)
+        return new_path
 

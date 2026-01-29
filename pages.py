@@ -1,3 +1,4 @@
+from PIL import ImageTk
 
 from api import ApiConnection, ImageWorks
 from base_types import AppFrame, GenericLabel, SrollFrame, BookDataComboBox, IntEntry
@@ -94,6 +95,7 @@ class CharactersPage(SrollFrame):
         else:
             for character in self.characters:
                 self.char_frame_generator(character)
+        ttk.Button(self.new_frame, text="Добавить персонажа", command=lambda: controller.show_frame(CreateCharacterPage)).pack(padx=10, pady=10)
 
     def char_frame_generator(self, character):
         char_frame = tk.Frame(self.new_frame, bg="white")
@@ -129,9 +131,9 @@ class CharPage(SrollFrame):
 
         #character image
         image_tk = ImageWorks.get_image_tk(character.image, 400, 300)
-        image = tk.Label(info_frame, image=image_tk, width=300, height=400)
-        image.grid(row=0, column=0, rowspan=10)
-        image.image = image_tk
+        self.image = tk.Label(info_frame, image=image_tk, width=300, height=400)
+        self.image.grid(row=0, column=0, rowspan=10)
+        self.image.image = image_tk
         self.update_ins_label = GenericLabel(info_frame, text="Изменения не сохранены")
         self.update_button = ttk.Button(info_frame, text="Сохранить изменения", command=lambda: self.update_character())
 
@@ -276,6 +278,9 @@ class CharPage(SrollFrame):
         self.hp_label.config(text=f"HP: {self.character.hp}/{self.character.max_hp}")
         self.initiative_label.config(text=f"Инициатива: {self.character.initiative}")
         self.coin_label.config(text=f"ММ: {self.character.cooper_coins} СМ: {self.character.silver_coins} ЗМ: {self.character.gold_coins}")
+        image_tk = ImageWorks.get_image_tk(self.character.image, 400, 300)
+        self.image.config(image=image_tk)
+        self.image.image = image_tk
 
     def update_character(self):
         if self.update_is_not_saved:
@@ -284,7 +289,7 @@ class CharPage(SrollFrame):
             self.update_ins_label.grid_forget()
             self.character.update_character()
 
-    # IN DEVELOP
+
     def select_image(self):
         self.selected_image = ImageWorks.select_image_from_system()
         self.image_selected_label.config(text=self.selected_image)
@@ -389,4 +394,65 @@ class SkillPackedSubController:
         self.renew_value_label()
         self.proficient_button.config(text="□", command=lambda: self.make_proficient())
         self.character_frame.unsaved_changes()
+
+# IN DEVELOP
+class CreateCharacterPage(AppFrame):
+    def __init__(self, parent, controller):
+        super().__init__(parent, "Создать персонажа",
+                         lambda: controller.show_frame(CharactersPage),
+                         lambda: controller.show_frame(SettingsPage))
+
+        form_frame = tk.Frame(self, background="#fcca9a")
+
+        GenericLabel(form_frame, text="Имя").grid(row=0, column=0)
+        GenericLabel(form_frame, text="Класс").grid(row=1, column=0)
+        GenericLabel(form_frame, text="Раса").grid(row=2, column=0)
+        GenericLabel(form_frame, text="Происхождение").grid(row=3, column=0)
+        GenericLabel(form_frame, text="Уровень").grid(row=4, column=0)
+        GenericLabel(form_frame, text="Бонус мастерства").grid(row=5, column=0)
+        GenericLabel(form_frame, text="КД").grid(row=6, column=0)
+        GenericLabel(form_frame, text="Скорость").grid(row=7, column=0)
+        GenericLabel(form_frame, text="Макс. хп").grid(row=8, column=0)
+        GenericLabel(form_frame, text="Инициатива").grid(row=9, column=0)
+        GenericLabel(form_frame, text="ММ").grid(row=10, column=0)
+        GenericLabel(form_frame, text="СМ").grid(row=11, column=0)
+        GenericLabel(form_frame, text="ЗМ").grid(row=12, column=0)
+        GenericLabel(form_frame, text="Подклас").grid(row=13, column=0)
+
+        self.name_field = ttk.Entry(form_frame)
+        self.class_field = BookDataComboBox(form_frame, DndClass)
+        self.race_field = BookDataComboBox(form_frame, Race)
+        self.background_field = BookDataComboBox(form_frame, Background)
+        self.level_field = IntEntry(form_frame, min_value=1, max_value=20)
+        self.proficient_bonus_field = IntEntry(form_frame, min_value=0)
+        self.armor_class_field = IntEntry(form_frame)
+        self.speed_field = IntEntry(form_frame, min_value=0)
+        self.max_hp_field = IntEntry(form_frame, min_value=0)
+        self.initiative_field = IntEntry(form_frame)
+        self.cooper_coins_field = IntEntry(form_frame, min_value=0)
+        self.silver_coins_field = IntEntry(form_frame, min_value=0)
+        self.gold_coins_field = IntEntry(form_frame, min_value=0)
+        self.subclass_field = ttk.Entry(form_frame)
+
+
+        self.name_field.grid(row=0, column=1)
+        self.class_field.grid(row=1, column=1)
+        self.race_field.grid(row=2, column=1)
+        self.background_field.grid(row=3, column=1)
+        self.level_field.grid(row=4, column=1)
+        self.proficient_bonus_field.grid(row=5, column=1)
+        self.armor_class_field.grid(row=6, column=1)
+        self.speed_field.grid(row=7, column=1)
+        self.max_hp_field.grid(row=8, column=1)
+        self.initiative_field.grid(row=9, column=1)
+        self.cooper_coins_field.grid(row=10, column=1)
+        self.silver_coins_field.grid(row=11, column=1)
+        self.gold_coins_field.grid(row=12, column=1)
+        self.subclass_field.grid(row=13, column=1)
+
+
+        form_frame.pack()
+
+
+
 
