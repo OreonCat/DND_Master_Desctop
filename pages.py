@@ -1,7 +1,7 @@
 from PIL import ImageTk
 
 from api import ApiConnection, ImageWorks
-from base_types import AppFrame, GenericLabel, SrollFrame, BookDataComboBox, IntEntry
+from base_types import AppFrame, GenericLabel, SrollFrame, BookDataComboBox, IntEntry, BooleanCheckbox
 import tkinter.ttk as ttk
 import tkinter as tk
 from game_objects import DndClass, Race, Character, Background
@@ -418,6 +418,11 @@ class CreateCharacterPage(AppFrame):
         GenericLabel(form_frame, text="СМ").grid(row=11, column=0)
         GenericLabel(form_frame, text="ЗМ").grid(row=12, column=0)
         GenericLabel(form_frame, text="Подклас").grid(row=13, column=0)
+        GenericLabel(form_frame, text="Игрок").grid(row=14, column=0)
+        GenericLabel(form_frame, text="Изображение").grid(row=15, column=0)
+        ttk.Button(form_frame, text="Выбрать", command=lambda: self.choose_image()).grid(row=15, column=1)
+
+        self.chosen_image_link = None
 
         self.name_field = ttk.Entry(form_frame)
         self.class_field = BookDataComboBox(form_frame, DndClass)
@@ -433,7 +438,8 @@ class CreateCharacterPage(AppFrame):
         self.silver_coins_field = IntEntry(form_frame, min_value=0)
         self.gold_coins_field = IntEntry(form_frame, min_value=0)
         self.subclass_field = ttk.Entry(form_frame)
-
+        self.chosen_image_label = GenericLabel(form_frame, text="")
+        self.is_player_checkbox = BooleanCheckbox(form_frame)
 
         self.name_field.grid(row=0, column=1)
         self.class_field.grid(row=1, column=1)
@@ -449,9 +455,38 @@ class CreateCharacterPage(AppFrame):
         self.silver_coins_field.grid(row=11, column=1)
         self.gold_coins_field.grid(row=12, column=1)
         self.subclass_field.grid(row=13, column=1)
+        self.is_player_checkbox.grid(row=14, column=1)
+        self.chosen_image_label.grid(row=16, column=0, columnspan=2)
 
+        ttk.Button(form_frame, text="Создать", command=lambda: self.create()).grid(row=17, column=0, columnspan=2)
 
         form_frame.pack()
+
+    def choose_image(self):
+        text =  ImageWorks.select_image_from_system()
+        self.chosen_image_link = text
+        self.chosen_image_label.config(text=text)
+
+    def create(self):
+        name = self.name_field.get()
+        dnd_subclass = self.subclass_field.get()
+        max_hp = self.max_hp_field.get()
+        armor_class = self.armor_class_field.get()
+        initiative = self.initiative_field.get()
+        cooper_coins = self.cooper_coins_field.get()
+        silver_coins = self.silver_coins_field.get()
+        gold_coins = self.gold_coins_field.get()
+        is_player = self.is_player_checkbox.get()
+        image = self.chosen_image_link
+        level = self.level_field.get()
+        speed = self.speed_field.get()
+        proficient_bonus = self.proficient_bonus_field.get()
+        dnd_class = self.class_field.get()
+        race = self.race_field.get()
+        background = self.background_field.get()
+
+        Character.create(name, dnd_subclass, max_hp, armor_class, initiative, cooper_coins, silver_coins,
+                         gold_coins, is_player, image, level, speed, proficient_bonus, dnd_class, race, background)
 
 
 

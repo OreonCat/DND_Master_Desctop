@@ -214,6 +214,33 @@ class Character:
         return new_char
 
     @classmethod
+    def create(cls, name, dnd_subclass, max_hp, armor_class, initiative, cooper_coins,
+               silver_coins, gold_coins, is_player, image, level, speed, proficient_bonus,
+               dnd_class, race, background):
+        new_char_json = {
+            "name": name,
+            "dnd_subclass": dnd_subclass,
+            "max_hp": max_hp,
+            "hp": max_hp,
+            "armor_class": armor_class,
+            "initiative": initiative,
+            "cooper_coins": cooper_coins,
+            "silver_coins": silver_coins,
+            "gold_coins": gold_coins,
+            "is_player": is_player,
+            "image": image,
+            "level": level,
+            "speed": speed,
+            "proficient_bonus": proficient_bonus,
+            "dnd_class": dnd_class,
+            "race": race,
+            "background": background,
+        }
+        print(new_char_json)
+        pass
+
+
+    @classmethod
     def get_all(cls):
         api_objects = ApiConnection.get(cls.get_link)
         if api_objects is None:
