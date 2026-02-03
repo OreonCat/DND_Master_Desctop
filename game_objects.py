@@ -149,6 +149,7 @@ class Ability:
 class Character:
     get_link = "characters"
     update_link = "characters/update/"
+    create_link = "characters/create"
     def __init__(self, id,
                  name,
                  dnd_subclass,
@@ -214,30 +215,19 @@ class Character:
         return new_char
 
     @classmethod
-    def create(cls, name, dnd_subclass, max_hp, armor_class, initiative, cooper_coins,
-               silver_coins, gold_coins, is_player, image, level, speed, proficient_bonus,
-               dnd_class, race, background):
-        new_char_json = {
-            "name": name,
-            "dnd_subclass": dnd_subclass,
-            "max_hp": max_hp,
-            "hp": max_hp,
-            "armor_class": armor_class,
-            "initiative": initiative,
-            "cooper_coins": cooper_coins,
-            "silver_coins": silver_coins,
-            "gold_coins": gold_coins,
-            "is_player": is_player,
-            "image": image,
-            "level": level,
-            "speed": speed,
-            "proficient_bonus": proficient_bonus,
-            "dnd_class": dnd_class,
-            "race": race,
-            "background": background,
-        }
-        print(new_char_json)
-        pass
+    def create(cls, collection, image):
+        new_char = {}
+        for key, value in collection.items():
+            if value != "":
+                new_char[key] = value
+        print(new_char)
+        if image != "":
+            image = ImageWorks.copy_image_to_program(image)
+            response = ApiConnection.post(cls.create_link, new_char, image)
+        else:
+            response = ApiConnection.post(cls.create_link, new_char)
+        print(response)
+        return response == 201
 
 
     @classmethod

@@ -402,6 +402,8 @@ class CreateCharacterPage(AppFrame):
                          lambda: controller.show_frame(CharactersPage),
                          lambda: controller.show_frame(SettingsPage))
 
+        self.controller = controller
+
         form_frame = tk.Frame(self, background="#fcca9a")
 
         GenericLabel(form_frame, text="Имя").grid(row=0, column=0)
@@ -462,31 +464,50 @@ class CreateCharacterPage(AppFrame):
 
         form_frame.pack()
 
+        self.required_error_label = GenericLabel(self, fg="red")
+
     def choose_image(self):
         text =  ImageWorks.select_image_from_system()
         self.chosen_image_link = text
         self.chosen_image_label.config(text=text)
 
-    def create(self):
-        name = self.name_field.get()
-        dnd_subclass = self.subclass_field.get()
-        max_hp = self.max_hp_field.get()
-        armor_class = self.armor_class_field.get()
-        initiative = self.initiative_field.get()
-        cooper_coins = self.cooper_coins_field.get()
-        silver_coins = self.silver_coins_field.get()
-        gold_coins = self.gold_coins_field.get()
-        is_player = self.is_player_checkbox.get()
-        image = self.chosen_image_link
-        level = self.level_field.get()
-        speed = self.speed_field.get()
-        proficient_bonus = self.proficient_bonus_field.get()
-        dnd_class = self.class_field.get()
-        race = self.race_field.get()
-        background = self.background_field.get()
+    def check_required_fields(self):
+        if (self.name_field.get() != "" and self.class_field.get() != "" and self.race_field.get() != ""
+                and self.background_field.get() != "" and self.subclass_field.get() != ""):
+            self.required_error_label.pack_forget()
+            return True
+        else:
+            self.required_error_label.config(text="Поля имя, класс, раса, и подкласс обязательны к заполнению")
+            self.required_error_label.pack()
+            return False
 
-        Character.create(name, dnd_subclass, max_hp, armor_class, initiative, cooper_coins, silver_coins,
-                         gold_coins, is_player, image, level, speed, proficient_bonus, dnd_class, race, background)
+    def create(self):
+        if self.check_required_fields():
+            character_collect = {
+                "name": self.name_field.get(),
+                "dnd_subclass": self.subclass_field.get(),
+                "max_hp": self.max_hp_field.get(),
+                "hp": self.max_hp_field.get(),
+                "armor_class": self.armor_class_field.get(),
+                "initiative": self.initiative_field.get(),
+                "cooper_coins": self.cooper_coins_field.get(),
+                "silver_coins": self.silver_coins_field.get(),
+                "gold_coins": self.gold_coins_field.get(),
+                "is_player": self.is_player_checkbox.get(),
+                "level": self.level_field.get(),
+                "speed": self.speed_field.get(),
+                "proficient_bonus": self.proficient_bonus_field.get(),
+                "dnd_class": self.class_field.get(),
+                "race": self.race_field.get(),
+                "background": self.background_field.get(),
+            }
+            image = self.chosen_image_link
+            is_created = Character.create(character_collect, image)
+            if is_created:
+                self.controller.remake_container()
+            else:
+                self.required_error_label.config(text="Вероятно такой персонаж уже существует")
+                self.required_error_label.pack()
 
 
 

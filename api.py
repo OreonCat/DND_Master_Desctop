@@ -25,22 +25,29 @@ class ApiConnection:
         return response.json()
 
     @classmethod
-    def post(cls, post_link, data):
+    def post(cls, post_link, data, image=None):
         full_link = cls.api_link + post_link
-        response = requests.post(full_link, data=data)
-        return response.json()
+        if image is None:
+            response = requests.post(full_link, data=data, headers={'Authorization': cls.__get_token()})
+        else:
+            image_name = image.split("/")[-1]
+            mime_type = mimetypes.guess_type(image)
+            with open(image, "rb") as image_file:
+                files = {"image": (image_name, image_file, mime_type)}
+                response = requests.post(full_link, data=data, files=files, headers={'Authorization': cls.__get_token()})
+        return response.status_code
 
     @classmethod
     def update(cls, update_link, pk, data, image=None):
         full_link = cls.api_link + update_link + str(pk)
         if image is None:
-            response = requests.put(full_link, data=data, headers={'Authorization': cls.__get_token()})
+            response = requests.patch(full_link, data=data, headers={'Authorization': cls.__get_token()})
         else:
             image_name = image.split("/")[-1]
             mime_type = mimetypes.guess_type(image_name)
             with open(image, 'rb') as image_file:
                 files = {'image': (image_name, image_file, mime_type)}
-                response = requests.put(full_link, data=data, files=files, headers={'Authorization': cls.__get_token()})
+                response = requests.patch(full_link, data=data, files=files, headers={'Authorization': cls.__get_token()})
         return response.status_code
 
     @classmethod
