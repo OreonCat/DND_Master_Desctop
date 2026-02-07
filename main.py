@@ -1,11 +1,11 @@
 import tkinter as tk
 from pages import StartPage, BookDataPage, DndClassPage, RacePage, LoginPage, SettingsPage, CharactersPage, \
-    BackgroundPage, CreateCharacterPage
+    BackgroundPage, CreateCharacterPage, GamesPage
 
 
 class MainApp(tk.Tk):
     pages = (StartPage, BookDataPage, DndClassPage, RacePage, LoginPage, SettingsPage, BackgroundPage, CharactersPage,
-             CreateCharacterPage)
+             CreateCharacterPage, GamesPage)
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)

@@ -4,13 +4,15 @@ from api import ApiConnection, ImageWorks
 from base_types import AppFrame, GenericLabel, SrollFrame, BookDataComboBox, IntEntry, BooleanCheckbox
 import tkinter.ttk as ttk
 import tkinter as tk
-from game_objects import DndClass, Race, Character, Background
+from game_objects import DndClass, Race, Character, Background, Game
+
 
 class StartPage(AppFrame):
     def __init__(self, parent, controller):
         super().__init__(parent, "Стартовая страница", None, lambda: controller.show_frame(SettingsPage))
         ttk.Button(self, text="Книжные данные", command=lambda: controller.show_frame(BookDataPage)).pack(padx=10, pady=10)
         ttk.Button(self, text="Персонажи", command=lambda: controller.show_frame(CharactersPage)).pack(padx=10, pady=10)
+        ttk.Button(self, text="Игры", command=lambda: controller.show_frame(GamesPage)).pack(padx=10, pady=10)
 
 
 class BookDataPage(AppFrame):
@@ -395,7 +397,7 @@ class SkillPackedSubController:
         self.proficient_button.config(text="□", command=lambda: self.make_proficient())
         self.character_frame.unsaved_changes()
 
-# IN DEVELOP
+
 class CreateCharacterPage(AppFrame):
     def __init__(self, parent, controller):
         super().__init__(parent, "Создать персонажа",
@@ -509,6 +511,14 @@ class CreateCharacterPage(AppFrame):
                 self.required_error_label.config(text="Вероятно такой персонаж уже существует")
                 self.required_error_label.pack()
 
+#IN DEVELOP
+class GamesPage(SrollFrame):
+    def __init__(self, parent, controller):
+        super().__init__(parent, "Игры", lambda: controller.show_frame(StartPage),
+                         lambda: controller.show_frame(SettingsPage))
 
+        games = Game.get_all()
+        for game in games:
+            GenericLabel(self.new_frame, text=game.name).pack(padx=10, pady=10)
 
 

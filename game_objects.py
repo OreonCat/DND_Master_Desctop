@@ -50,12 +50,12 @@ class Background(BookDataClass):
 
 class Skill:
     update_link = "skills/update/"
-    def __init__(self, id, skill, choice, value, is_proficient, character_link):
-        self.id = id
-        self.skill = skill
-        self.choice = choice
-        self.value = value
-        self.is_proficient = is_proficient
+    def __init__(self, api_result, character_link):
+        self.id = api_result['id']
+        self.skill = api_result['skill']['name']
+        self.choice = api_result['skill']['choice']
+        self.value = api_result['value']
+        self.is_proficient = api_result['is_proficient']
         self.character_link = character_link
         self.is_updated = False
 
@@ -84,14 +84,17 @@ class Skill:
 
 class Ability:
     update_link = "abilities/update/"
-    def __init__(self, id, ability, choice, value, is_proficient, saving_throw, character_link):
-        self.id = id
-        self.ability = ability
-        self.choice = choice
-        self.value = value
-        self.is_proficient = is_proficient
-        self.saving_throw = saving_throw
+    def __init__(self, api_result, character_link):
+        self.id = api_result['id']
+        self.ability = api_result['ability']['name']
+        self.choice = api_result['ability']['choice']
+        self.value = api_result['value']
+        self.is_proficient = api_result['is_proficient']
+        self.saving_throw = api_result['saving_throw']
         self.skills = []
+        for skill in api_result['skills']:
+            skill_obj = Skill(skill, character_link)
+            self.skills.append(skill_obj)
         self.character_link = character_link
         self.is_updated = False
 
@@ -150,69 +153,32 @@ class Character:
     get_link = "characters"
     update_link = "characters/update/"
     create_link = "characters/create"
-    def __init__(self, id,
-                 name,
-                 dnd_subclass,
-                 max_hp,
-                 hp,
-                 armor_class,
-                 initiative,
-                 cooper_coins,
-                 silver_coins,
-                 gold_coins,
-                 is_player,
-                 image,
-                 level,
-                 speed,
-                 proficient_bonus,
-                 dnd_class,
-                 race,
-                 background):
-        self.id = id
-        self.name = name
-        self.dnd_subclass = dnd_subclass
-        self.max_hp = max_hp
-        self.hp = hp
-        self.armor_class = armor_class
-        self.initiative = initiative
-        self.cooper_coins = cooper_coins
-        self.silver_coins = silver_coins
-        self.gold_coins = gold_coins
-        self.is_player = is_player
-        self.image = image
-        self.level = level
-        self.speed = speed
-        self.proficient_bonus = proficient_bonus
-        self.dnd_class = dnd_class
-        self.race = race
-        self.background = background
+    objects = []
+    def __init__(self, api_result):
+        self.id = api_result['id']
+        self.name = api_result['name']
+        self.dnd_subclass = api_result['dnd_subclass']
+        self.max_hp = api_result['max_hp']
+        self.hp = api_result['hp']
+        self.armor_class = api_result['armor_class']
+        self.initiative = api_result['initiative']
+        self.cooper_coins = api_result['cooper_coins']
+        self.silver_coins = api_result['silver_coins']
+        self.gold_coins = api_result['gold_coins']
+        self.is_player = api_result['is_player']
+        self.image = api_result['image']
+        self.level = api_result['level']
+        self.speed = api_result['speed']
+        self.proficient_bonus = api_result['proficient_bonus']
+        self.dnd_class = DndClass.return_object_by_id(api_result['dnd_class'])
+        self.race = Race.return_object_by_id(api_result['race'])
+        self.background = Background.return_object_by_id(api_result['background'])
         self.abilities = []
-
+        for ability in api_result['abilities']:
+            ability_obj = Ability(ability, self)
+            self.abilities.append(ability_obj)
         self.is_updated = False
         self.image_is_updated = False
-
-    @classmethod
-    def get_one(cls, api_result):
-        api_objects = api_result
-        dnd_class = DndClass.return_object_by_id(api_objects['dnd_class'])
-        race = Race.return_object_by_id(api_objects['race'])
-
-        background = Background.return_object_by_id(api_objects['background'])
-        new_char =  cls(api_objects['id'], api_objects['name'],
-                   api_objects['dnd_subclass'], api_objects['max_hp'], api_objects['hp'],
-                   api_objects['armor_class'], api_objects['initiative'],
-                   api_objects['cooper_coins'], api_objects['silver_coins'],
-                   api_objects['gold_coins'], api_objects['is_player'],
-                   api_objects['image'], api_objects['level'],
-                   api_objects['speed'], api_objects['proficient_bonus'],
-                   dnd_class, race, background)
-        for ability_api in api_objects['abilities']:
-            ability = Ability(ability_api['id'], ability_api['ability']['name'], ability_api['ability']['choice'], ability_api['value'], ability_api['is_proficient'], ability_api['saving_throw'], new_char)
-            new_char.abilities.append(ability)
-            for skill_api in ability_api['skills']:
-                skill = Skill(skill_api['id'], skill_api['skill']['name'], skill_api['skill']['choice'], skill_api['value'], skill_api['is_proficient'], new_char)
-                ability.skills.append(skill)
-        return new_char
 
     @classmethod
     def create(cls, collection, image):
@@ -235,10 +201,16 @@ class Character:
         api_objects = ApiConnection.get(cls.get_link)
         if api_objects is None:
             return None
-        characters = []
         for api_object in api_objects:
-            characters.append(cls.get_one(api_object))
-        return characters
+            cls.objects.append(cls(api_object))
+        return cls.objects
+
+    @classmethod
+    def get_object_by_id(cls, char_id):
+        for obj in cls.objects:
+            if obj.id == char_id:
+                return obj
+        return None
 
     def go_to_gold(self):
         if self.cooper_coins >= 10 or self.gold_coins >= 10:
@@ -330,5 +302,55 @@ class Character:
                 self.is_updated = False
         for ability in self.abilities:
             ability.update_ability()
+
+class EncounterCharacter:
+    def __init__(self, api_request):
+        self.id = api_request["id"]
+        self.character = Character.get_object_by_id(api_request["character"])
+        self.is_enemy = api_request["is_enemy"]
+        self.initiative = api_request["initiative"]
+        self.is_my_step = api_request["is_my_step"]
+        self.hp = api_request["hp"]
+        self.max_hp = api_request["max_hp"]
+
+class Encounter:
+    def __init__(self, api_request):
+        self.id = api_request["id"]
+        self.stage = api_request["stage"]
+        self.is_start = api_request["is_start"]
+        self.is_complete = api_request["is_complete"]
+        self.time_start = api_request["time_start"]
+        self.time_end = api_request["time_end"]
+        self.encounter_characters = []
+        for enc_character in api_request["encounter_characters"]:
+            self.encounter_characters.append(EncounterCharacter(enc_character))
+
+class Game:
+    get_link = "games"
+    def __init__(self, api_request):
+        self.id = api_request['id']
+        self.name = api_request['name']
+        self.image = api_request['image']
+        self.is_complete = api_request['is_complete']
+        self.time_start = api_request['time_start']
+        self.time_end = api_request['time_end']
+        self.master = api_request['master']
+        self.characters = []
+        self.encounters = []
+        for character in api_request['characters']:
+            self.characters.append(Character.get_object_by_id(character["id"]))
+        for encounter in api_request['encounters']:
+            self.encounters.append(Encounter(encounter))
+
+    @classmethod
+    def get_all(cls):
+        api_objects = ApiConnection.get(cls.get_link)
+        if api_objects is None:
+            return []
+        new_games =  []
+        for api_object in api_objects:
+            new_games.append(cls(api_object))
+        return new_games
+
 
 
