@@ -517,8 +517,51 @@ class GamesPage(SrollFrame):
         super().__init__(parent, "Игры", lambda: controller.show_frame(StartPage),
                          lambda: controller.show_frame(SettingsPage))
 
+        self.controller = controller
         games = Game.get_all()
         for game in games:
-            GenericLabel(self.new_frame, text=game.name).pack(padx=10, pady=10)
+            game_frame = self.get_game_frame(game)
+            game_frame.pack(padx=10, pady=10)
 
+    def get_game_frame(self, game):
+        game_frame = tk.Frame(self.new_frame, bg="white")
+
+        game_image_tk = ImageWorks.get_image_tk(game.image, 400, 400)
+        game_image = tk.Label(game_frame, image=game_image_tk, width=200, height=200)
+        game_image.image = game_image_tk
+        game_image.grid(row=0, column=0, rowspan=3)
+
+        GenericLabel(game_frame, text=game.name, bg="white").grid(row=0, column=1)
+        GenericLabel(game_frame, text=game.time_start, bg="white").grid(row=1, column=1)
+        self.controller.add_to_frame(page=GamePage, page_name=game.name, pure_data=game)
+        name_for_button = game.name
+        ttk.Button(game_frame, text="Перейти", command=lambda: self.controller.show_frame(name_for_button)).grid(row=2, column=1)
+        return game_frame
+
+
+class GamePage(SrollFrame):
+    def __init__(self, parent, controller, game):
+        super().__init__(parent, game.name, lambda: controller.show_frame(GamesPage), lambda: controller.show_frame(SettingsPage))
+
+        self.controller = controller
+
+        info_frame = tk.Frame(self.new_frame, bg="#fcca9a")
+
+        image_tk = ImageWorks.get_image_tk(game.image, 400, 400)
+        image = tk.Label(info_frame, image=image_tk, width=400, height=400)
+        image.image = image_tk
+        image.grid(row=0, column=0, rowspan=3)
+        GenericLabel(info_frame, text=game.name, font_weight="bold").grid(row=0, column=1)
+        GenericLabel(info_frame, text=f"Дата начала: {game.time_start}", font_weight="bold").grid(row=1, column=1)
+        GenericLabel(info_frame, text=f"Мастер: {game.master}").grid(row=2, column=1)
+        info_frame.pack(padx=10, pady=10)
+
+        GenericLabel(self.new_frame, text="Игроки", font_size=20, font_weight="bold").pack(padx=10, pady=10)
+
+        self.characters_frame = tk.Frame(self.new_frame, bg="#fcca9a")
+        for character in game.characters:
+            print(character)
+
+    def get_character_frame(self, character):
+        char_frame = tk.Frame(self.characters_frame, bg="white")
 
