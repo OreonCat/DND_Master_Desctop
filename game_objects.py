@@ -352,5 +352,11 @@ class Game:
             new_games.append(cls(api_object))
         return new_games
 
+    def remove_character(self, character):
+        self.characters.remove(character)
+
+    def add_character(self, character):
+        self.characters.append(character)
+
 
 

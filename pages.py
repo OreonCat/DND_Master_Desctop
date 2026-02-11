@@ -544,24 +544,84 @@ class GamePage(SrollFrame):
         super().__init__(parent, game.name, lambda: controller.show_frame(GamesPage), lambda: controller.show_frame(SettingsPage))
 
         self.controller = controller
+        self.game = game
 
         info_frame = tk.Frame(self.new_frame, bg="#fcca9a")
 
         image_tk = ImageWorks.get_image_tk(game.image, 400, 400)
         image = tk.Label(info_frame, image=image_tk, width=400, height=400)
         image.image = image_tk
-        image.grid(row=0, column=0, rowspan=3)
+        image.grid(row=0, column=0, rowspan=2)
         GenericLabel(info_frame, text=game.name, font_weight="bold").grid(row=0, column=1)
         GenericLabel(info_frame, text=f"Дата начала: {game.time_start}", font_weight="bold").grid(row=1, column=1)
-        GenericLabel(info_frame, text=f"Мастер: {game.master}").grid(row=2, column=1)
         info_frame.pack(padx=10, pady=10)
 
-        GenericLabel(self.new_frame, text="Игроки", font_size=20, font_weight="bold").pack(padx=10, pady=10)
-
+        #CHARACTERS
         self.characters_frame = tk.Frame(self.new_frame, bg="#fcca9a")
+        GenericLabel(self.characters_frame, text="Игроки", font_size=20, font_weight="bold").pack(padx=10, pady=10)
+        self.list_characters_frame = tk.Frame(self.characters_frame, bg="#fcca9a")
         for character in game.characters:
-            print(character)
+            char_frame = self.get_character_frame(character, self.list_characters_frame)
+            char_frame.pack(padx=10, pady=10)
+        self.list_characters_frame.pack(padx=10, pady=10)
+        ttk.Button(self.characters_frame, text="Добавить", command=lambda: self.add_character_display()).pack(padx=10, pady=10)
+        self.add_character_frame = tk.Frame(self.characters_frame, bg="gray")
+        self.characters_frame.pack(padx=10, pady=10)
 
-    def get_character_frame(self, character):
-        char_frame = tk.Frame(self.characters_frame, bg="white")
+        #ENCOUNTERS
+        self.encounters_frame = tk.Frame(self.new_frame, bg="#fcca9a")
+        GenericLabel(self.encounters_frame, text="Битвы", font_size=20, font_weight="bold").pack(padx=10, pady=10)
+        self.encounters_list_frame = tk.Frame(self.encounters_frame, bg="#fcca9a")
+        for encounter in game.encounters:
+            enc_frame = self.get_encounter_frame(encounter)
+            enc_frame.pack(padx=10, pady=10)
+        self.encounters_list_frame.pack(padx=10, pady=10)
+        self.encounters_frame.pack(padx=10, pady=10)
+
+    def get_character_frame(self, character, parent, add_action=False):
+        char_frame = tk.Frame(parent, bg="white")
+
+        image_tk = ImageWorks.get_image_tk(character.image, 200, 300)
+        image = tk.Label(char_frame, image=image_tk, width=200, height=200)
+        image.image = image_tk
+        image.grid(row=0, column=0, rowspan=4)
+        GenericLabel(char_frame, text=character.name, bg="white").grid(row=0, column=1)
+        GenericLabel(char_frame, text=f"{character.dnd_class.name} {character.level} ур.", bg="white").grid(row=1, column=1)
+        ttk.Button(char_frame, text="Подробнее", command=lambda: self.controller.show_frame(character.name)).grid(row=2,
+                                                                                                                  column=1)
+        if add_action:
+            ttk.Button(char_frame, text="Добавить", command=lambda: self.add_character(character, char_frame)).grid(row=3, column=1)
+        else:
+            ttk.Button(char_frame, text="Удалить", command=lambda: self.delete_character_from_game(char_frame, character)).grid(row=3, column=1)
+        return char_frame
+
+    def add_character_display(self):
+        if self.add_character_frame.winfo_manager() == "pack":
+            self.add_character_frame.pack_forget()
+            for child in self.add_character_frame.winfo_children():
+                child.destroy()
+        else:
+            for character in Character.objects:
+                if character not in self.game.characters:
+                    char_frame = self.get_character_frame(character, self.add_character_frame, True)
+                    char_frame.pack(padx=10, pady=10)
+            self.add_character_frame.pack(padx=10, pady=10)
+
+    def delete_character_from_game(self, frame, character):
+        self.game.remove_character(character)
+        frame.pack_forget()
+        frame.destroy()
+
+    def add_character(self, character, add_frame):
+        char_frame = self.get_character_frame(character, self.list_characters_frame)
+        self.game.add_character(character)
+        char_frame.pack(padx=10, pady=10)
+        add_frame.pack_forget()
+
+    def get_encounter_frame(self, encounter):
+        encounter_frame = tk.Frame(self.encounters_list_frame, bg="white")
+        GenericLabel(encounter_frame, text=encounter.time_start, bg="white", font_weight="bold").pack(padx=10, pady=10)
+        GenericLabel(encounter_frame, text=f"Ход {encounter.stage}", bg="white").pack(padx=10, pady=10)
+        return encounter_frame
+
 
