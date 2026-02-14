@@ -1,3 +1,5 @@
+import datetime
+
 from PIL import ImageTk
 
 from api import ApiConnection, ImageWorks
@@ -619,9 +621,91 @@ class GamePage(SrollFrame):
         add_frame.pack_forget()
 
     def get_encounter_frame(self, encounter):
-        encounter_frame = tk.Frame(self.encounters_list_frame, bg="white")
+        encounter_frame = tk.Frame(self.encounters_list_frame)
+        if encounter.is_complete:
+            encounter_frame.config(bg="grey")
         GenericLabel(encounter_frame, text=encounter.time_start, bg="white", font_weight="bold").pack(padx=10, pady=10)
         GenericLabel(encounter_frame, text=f"Ход {encounter.stage}", bg="white").pack(padx=10, pady=10)
+        self.controller.add_to_frame(page=EncounterPage, page_name=encounter, pure_data=encounter)
+        ttk.Button(encounter_frame, text="Перейти", command=lambda: self.controller.show_frame(encounter)).pack(padx=10, pady=10)
         return encounter_frame
 
+class EncounterPage(SrollFrame):
+    def __init__(self, parent, controller, encounter):
+        super().__init__(parent, f"{encounter.game.name} - {encounter.time_start}", lambda: controller.show_frame(encounter.game.name),
+                         lambda: controller.show_frame(SettingsPage))
+
+        self.controller = controller
+        self.encounter = encounter
+
+        self.ava_frame_collection = []
+        self.avatars_frame = tk.Frame(self.new_frame, bg="#fcca9a")
+
+        self.characters_frame = tk.Frame(self.new_frame, bg="#fcca9a")
+        self.heroes_frame = tk.Frame(self.characters_frame, bg="white")
+        self.heroes_frame_characters = tk.Frame(self.heroes_frame, bg="white")
+        self.enemies_frame = tk.Frame(self.characters_frame, bg="white")
+        self.enemies_frame_characters = tk.Frame(self.enemies_frame, bg="white")
+        GenericLabel(self.heroes_frame, text="Герои", bg="white", font_weight="bold").pack(padx=10, pady=10)
+        GenericLabel(self.enemies_frame, text="Противники", bg="white", font_weight="bold").pack(padx=10, pady=10)
+
+        for i in range(encounter.encounter_characters.__len__()):
+            ava_frame = self.get_ava_frame(encounter.encounter_characters[i])
+            ava_frame.grid(row=0, column=i, padx=5, pady=5)
+            self.ava_frame_collection.append(ava_frame)
+            char_frame = self.get_character_frame(encounter.encounter_characters[i], encounter.encounter_characters[i].is_enemy)
+            char_frame.pack(padx=10, pady=10)
+        self.avatars_frame.pack()
+        self.heroes_frame_characters.pack()
+        self.enemies_frame_characters.pack()
+
+        ttk.Button(self.heroes_frame, text="+").pack(fill="x")
+        ttk.Button(self.enemies_frame, text="+").pack(fill="x")
+
+        self.heroes_frame.grid(row=0, column=0, padx=5, pady=5)
+        self.enemies_frame.grid(row=0, column=1, padx=5, pady=5)
+        self.characters_frame.pack()
+
+    def get_ava_frame(self, enc_char):
+        ava_frame = tk.Frame(self.avatars_frame, bg="white")
+
+        is_my_step = GenericLabel(ava_frame, bg="white", font_size="10")
+        if enc_char.is_my_step:
+            is_my_step.config(text="↓")
+        else:
+            is_my_step.config(text="-")
+        is_my_step.pack(padx=3, pady=3)
+
+        image_tk = ImageWorks.get_image_tk(enc_char.character.image, 70, 70)
+        image = tk.Label(ava_frame, image=image_tk, width=70, height=70)
+        image.image = image_tk
+        image.pack()
+
+        if enc_char.is_enemy:
+            ava_frame.config(bg="red")
+
+        GenericLabel(ava_frame, text=enc_char.character.name, bg="white", font_size=7).pack()
+        return ava_frame
+
+    def get_character_frame(self, character, is_enemy):
+        if is_enemy:
+            char_frame = tk.Frame(self.enemies_frame_characters, bg="white")
+        else:
+            char_frame = tk.Frame(self.heroes_frame_characters, bg="white")
+
+        image_tk = ImageWorks.get_image_tk(character.character.image, 150, 200)
+        image = tk.Label(char_frame, image=image_tk, width=150, height=200)
+        image.image = image_tk
+        image.grid(row=0, column=0, rowspan=5)
+
+        GenericLabel(char_frame, text=character.character.name, bg="white").grid(row=0, column=1, columnspan=4)
+        GenericLabel(char_frame, text=character.character.dnd_class.name, bg="white", font_size=12).grid(row=1, column=1, columnspan=4)
+        GenericLabel(char_frame, text=f"Инициатива: {character.initiative}", bg="white", font_size=12).grid(row=2, column=1, columnspan=4)
+        GenericLabel(char_frame, text=f"❤: {character.hp}/{character.max_hp}", bg="white", font_size=12).grid(row=3, column=1, columnspan=4)
+
+        ttk.Button(char_frame, text="Инициатива").grid(row=4, column=1)
+        ttk.Button(char_frame, text="Лечение").grid(row=4, column=2)
+        ttk.Button(char_frame, text="Урон").grid(row=4, column=3)
+        ttk.Button(char_frame, text="Удалить").grid(row=4, column=4)
+        return char_frame
 

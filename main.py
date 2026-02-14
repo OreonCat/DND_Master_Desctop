@@ -2,7 +2,6 @@ import tkinter as tk
 from pages import StartPage, BookDataPage, DndClassPage, RacePage, LoginPage, SettingsPage, CharactersPage, \
     BackgroundPage, CreateCharacterPage, GamesPage
 
-
 class MainApp(tk.Tk):
     pages = (StartPage, BookDataPage, DndClassPage, RacePage, LoginPage, SettingsPage, BackgroundPage, CharactersPage,
              CreateCharacterPage, GamesPage)

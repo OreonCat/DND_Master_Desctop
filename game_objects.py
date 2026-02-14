@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from api import ApiConnection, ImageWorks
 
 
@@ -303,6 +305,25 @@ class Character:
         for ability in self.abilities:
             ability.update_ability()
 
+
+class TimeUsedObject:
+    date_time_format_api = "%Y-%m-%dT%H:%M:%S.%fZ"
+    date_time_format = "%d.%m.%Y %H:%M:%S"
+
+    @classmethod
+    def rebuild_time(cls, str_time_element: str):
+        if str_time_element is None:
+            return None
+        time_element = datetime.strptime(str_time_element, cls.date_time_format_api)
+        return datetime.strftime(time_element, cls.date_time_format)
+
+    @classmethod
+    def rebuild_time_api(cls, str_time_element: str):
+        if str_time_element is None:
+            return None
+        time_element = datetime.strptime(str_time_element, cls.date_time_format)
+        return datetime.strftime(time_element, cls.date_time_format_api)
+
 class EncounterCharacter:
     def __init__(self, api_request):
         self.id = api_request["id"]
@@ -314,33 +335,40 @@ class EncounterCharacter:
         self.max_hp = api_request["max_hp"]
 
 class Encounter:
-    def __init__(self, api_request):
+    def __init__(self, api_request, game):
         self.id = api_request["id"]
         self.stage = api_request["stage"]
         self.is_start = api_request["is_start"]
         self.is_complete = api_request["is_complete"]
-        self.time_start = api_request["time_start"]
-        self.time_end = api_request["time_end"]
+        self.time_start = TimeUsedObject.rebuild_time(api_request["time_start"])
+        self.time_end = TimeUsedObject.rebuild_time(api_request["time_end"])
         self.encounter_characters = []
+        self.game = game
         for enc_character in api_request["encounter_characters"]:
             self.encounter_characters.append(EncounterCharacter(enc_character))
+        self.sort_encounter_characters()
 
-class Game:
+    def sort_encounter_characters(self):
+        self.encounter_characters.sort(key=lambda character: character.initiative, reverse=True)
+
+
+
+class Game(TimeUsedObject):
     get_link = "games"
     def __init__(self, api_request):
         self.id = api_request['id']
         self.name = api_request['name']
         self.image = api_request['image']
         self.is_complete = api_request['is_complete']
-        self.time_start = api_request['time_start']
-        self.time_end = api_request['time_end']
+        self.time_start = TimeUsedObject.rebuild_time(api_request['time_start'])
+        self.time_end = TimeUsedObject.rebuild_time(api_request['time_end'])
         self.master = api_request['master']
         self.characters = []
         self.encounters = []
         for character in api_request['characters']:
             self.characters.append(Character.get_object_by_id(character["id"]))
         for encounter in api_request['encounters']:
-            self.encounters.append(Encounter(encounter))
+            self.encounters.append(Encounter(encounter, self))
 
     @classmethod
     def get_all(cls):
@@ -357,6 +385,3 @@ class Game:
 
     def add_character(self, character):
         self.characters.append(character)
-
-
-
