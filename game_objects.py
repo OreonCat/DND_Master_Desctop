@@ -1,4 +1,5 @@
 from datetime import datetime
+import random
 
 from api import ApiConnection, ImageWorks
 
@@ -324,8 +325,16 @@ class TimeUsedObject:
         time_element = datetime.strptime(str_time_element, cls.date_time_format)
         return datetime.strftime(time_element, cls.date_time_format_api)
 
+    @classmethod
+    def get_now(cls):
+        return datetime.strftime(datetime.now(), cls.date_time_format)
+
+    @classmethod
+    def get_now_api(cls):
+        return datetime.strftime(datetime.now(), cls.date_time_format_api)
+
 class EncounterCharacter:
-    def __init__(self, api_request):
+    def __init__(self, api_request, encounter, is_new=False):
         self.id = api_request["id"]
         self.character = Character.get_object_by_id(api_request["character"])
         self.is_enemy = api_request["is_enemy"]
@@ -333,6 +342,38 @@ class EncounterCharacter:
         self.is_my_step = api_request["is_my_step"]
         self.hp = api_request["hp"]
         self.max_hp = api_request["max_hp"]
+        self.encounter = encounter
+        self.is_new = is_new
+
+    def get_damage(self, damage):
+        if self.hp - damage <= 0:
+            self.hp = 0
+        else:
+            self.hp -= damage
+
+    def get_health(self, health):
+        if self.hp + health >= self.max_hp:
+            self.hp = self.max_hp
+        else:
+            self.hp += health
+
+    def set_initiative(self, initiative):
+        self.initiative = initiative
+
+
+    @classmethod
+    def create_new(cls, character, encounter, is_enemy):
+        random_initiative = random.randint(1, 20) + character.initiative
+        for_construct = {
+            "id": None,
+            "character": character.id,
+            "is_enemy": is_enemy,
+            "initiative": random_initiative,
+            "is_my_step": False,
+            "hp": character.hp,
+            "max_hp": character.max_hp,
+        }
+        return cls(for_construct, encounter, is_new=True)
 
 class Encounter:
     def __init__(self, api_request, game):
@@ -345,11 +386,59 @@ class Encounter:
         self.encounter_characters = []
         self.game = game
         for enc_character in api_request["encounter_characters"]:
-            self.encounter_characters.append(EncounterCharacter(enc_character))
+            self.encounter_characters.append(EncounterCharacter(enc_character, self))
         self.sort_encounter_characters()
 
     def sort_encounter_characters(self):
         self.encounter_characters.sort(key=lambda character: character.initiative, reverse=True)
+
+    def add_encounter_character(self, enc_character):
+        self.encounter_characters.append(enc_character)
+        self.sort_encounter_characters()
+
+    def delete_encounter_character(self, character):
+        self.encounter_characters.remove(character)
+
+    def start(self):
+        self.is_start = True
+        self.time_start = TimeUsedObject.get_now()
+        self.sort_encounter_characters()
+        self.encounter_characters[0].is_my_step = True
+        print(f"Encounter Started {self.is_start} {self.time_start}")
+
+    def make_step(self):
+        char_list_len = len(self.encounter_characters)
+        for i in range(0, char_list_len):
+            if self.encounter_characters[i].is_my_step:
+                self.encounter_characters[i].is_my_step = False
+                if (i+1) < char_list_len:
+                    self.encounter_characters[i+1].is_my_step = True
+                    break
+                else:
+                    self.encounter_characters[0].is_my_step = True
+                    self.stage += 1
+
+    def complete(self):
+        self.is_complete = True
+        self.time_end = TimeUsedObject.get_now()
+        print(f"Encounter Completed {self.is_complete} {self.time_end}")
+
+    @classmethod
+    def create_new(cls, characters, game):
+        new_data = {
+            "id": None,
+            "stage": 0,
+            "is_start": False,
+            "is_complete": False,
+            "time_start": TimeUsedObject.get_now_api(),
+            "time_end": None,
+            "encounter_characters": [],
+        }
+        new_encounter = cls(new_data, game)
+        for character in characters:
+            new_enc_char = EncounterCharacter.create_new(character, new_encounter, False)
+            new_encounter.add_encounter_character(new_enc_char)
+        return new_encounter
 
 
 

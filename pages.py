@@ -6,7 +6,7 @@ from api import ApiConnection, ImageWorks
 from base_types import AppFrame, GenericLabel, SrollFrame, BookDataComboBox, IntEntry, BooleanCheckbox
 import tkinter.ttk as ttk
 import tkinter as tk
-from game_objects import DndClass, Race, Character, Background, Game
+from game_objects import DndClass, Race, Character, Background, Game, EncounterCharacter, Encounter
 
 
 class StartPage(AppFrame):
@@ -513,7 +513,6 @@ class CreateCharacterPage(AppFrame):
                 self.required_error_label.config(text="Вероятно такой персонаж уже существует")
                 self.required_error_label.pack()
 
-#IN DEVELOP
 class GamesPage(SrollFrame):
     def __init__(self, parent, controller):
         super().__init__(parent, "Игры", lambda: controller.show_frame(StartPage),
@@ -542,6 +541,7 @@ class GamesPage(SrollFrame):
 
 
 class GamePage(SrollFrame):
+    encounters = {}
     def __init__(self, parent, controller, game):
         super().__init__(parent, game.name, lambda: controller.show_frame(GamesPage), lambda: controller.show_frame(SettingsPage))
 
@@ -578,6 +578,7 @@ class GamePage(SrollFrame):
             enc_frame = self.get_encounter_frame(encounter)
             enc_frame.pack(padx=10, pady=10)
         self.encounters_list_frame.pack(padx=10, pady=10)
+        ttk.Button(self.encounters_frame, text="Новая битва", command=lambda: self.encounter_create()).pack(padx=10, pady=10)
         self.encounters_frame.pack(padx=10, pady=10)
 
     def get_character_frame(self, character, parent, add_action=False):
@@ -628,7 +629,18 @@ class GamePage(SrollFrame):
         GenericLabel(encounter_frame, text=f"Ход {encounter.stage}", bg="white").pack(padx=10, pady=10)
         self.controller.add_to_frame(page=EncounterPage, page_name=encounter, pure_data=encounter)
         ttk.Button(encounter_frame, text="Перейти", command=lambda: self.controller.show_frame(encounter)).pack(padx=10, pady=10)
+        self.add_encounter_to_collection(encounter_frame, encounter)
         return encounter_frame
+
+    @classmethod
+    def add_encounter_to_collection(cls, encounter_frame, encounter):
+        cls.encounters[encounter] = encounter_frame
+
+
+    def encounter_create(self):
+        new_encounter = Encounter.create_new(self.game.characters, self.game)
+        new_enc_frame = self.get_encounter_frame(new_encounter)
+        new_enc_frame.pack(padx=10, pady=10)
 
 class EncounterPage(SrollFrame):
     def __init__(self, parent, controller, encounter):
@@ -650,62 +662,221 @@ class EncounterPage(SrollFrame):
         GenericLabel(self.enemies_frame, text="Противники", bg="white", font_weight="bold").pack(padx=10, pady=10)
 
         for i in range(encounter.encounter_characters.__len__()):
-            ava_frame = self.get_ava_frame(encounter.encounter_characters[i])
+            ava_frame = AvaFrameSubFrame(self.avatars_frame, encounter.encounter_characters[i])
             ava_frame.grid(row=0, column=i, padx=5, pady=5)
             self.ava_frame_collection.append(ava_frame)
-            char_frame = self.get_character_frame(encounter.encounter_characters[i], encounter.encounter_characters[i].is_enemy)
+            char_frame = EncounterCharacterSubFrame(self.enemies_frame_characters, encounter.encounter_characters[i]) if encounter.encounter_characters[i].is_enemy else EncounterCharacterSubFrame(self.heroes_frame_characters, encounter.encounter_characters[i])
             char_frame.pack(padx=10, pady=10)
         self.avatars_frame.pack()
         self.heroes_frame_characters.pack()
         self.enemies_frame_characters.pack()
 
-        ttk.Button(self.heroes_frame, text="+").pack(fill="x")
-        ttk.Button(self.enemies_frame, text="+").pack(fill="x")
+        ttk.Button(self.heroes_frame, text="+", command=lambda: self.get_add_heroes_visible()).pack(fill="x")
+        ttk.Button(self.enemies_frame, text="+", command=lambda: self.get_add_enemies_visible()).pack(fill="x")
+
+        self.add_heroes_frame = self.get_addable_list(self.heroes_frame, False)
+        self.add_enemies_frame = self.get_addable_list(self.enemies_frame, True)
 
         self.heroes_frame.grid(row=0, column=0, padx=5, pady=5)
         self.enemies_frame.grid(row=0, column=1, padx=5, pady=5)
         self.characters_frame.pack()
 
-    def get_ava_frame(self, enc_char):
-        ava_frame = tk.Frame(self.avatars_frame, bg="white")
+        self.buttons_frame = tk.Frame(self.new_frame, bg="#fcca9a")
+        self.stage_label = GenericLabel(self.buttons_frame, text=f"Ход: {self.encounter.stage}", bg="white")
+        self.start_button = ttk.Button(self.buttons_frame, text="СТАРТ", command=lambda: self.start())
+        self.step_button = ttk.Button(self.buttons_frame, text="ШАГ", command=lambda: self.make_step())
+        self.complete_button = ttk.Button(self.buttons_frame, text="ЗАВЕРШИТЬ", command=lambda: self.complete())
+        self.stage_label.grid(row=0, column=0, padx=5, pady=5)
+        if self.encounter.is_start and not self.encounter.is_complete:
+            self.step_button.grid(row=0, column=1, padx=5, pady=5)
+            self.complete_button.grid(row=0, column=2, padx=5, pady=5)
+        elif not self.encounter.is_start and not self.encounter.is_complete:
+            self.start_button.grid(row=0, column=1, padx=5, pady=5)
+        self.buttons_frame.pack(padx=10, pady=10)
 
-        is_my_step = GenericLabel(ava_frame, bg="white", font_size="10")
-        if enc_char.is_my_step:
-            is_my_step.config(text="↓")
+    def remake_avatars_frames(self):
+        new_collection = []
+        for i in range(self.encounter.encounter_characters.__len__()):
+            ava_frame = AvaFrameSubFrame(self.avatars_frame, self.encounter.encounter_characters[i])
+            ava_frame.grid(row=0, column=i, padx=5, pady=5)
+            new_collection.append(ava_frame)
+
+        for i in range(self.ava_frame_collection.__len__()):
+            if (self.ava_frame_collection[i] not in new_collection) and (self.ava_frame_collection[i].actual_step == True) and (self.ava_frame_collection.__len__() > 1):
+                self.ava_frame_collection[i].encounter_character.is_my_step = False
+                if i < self.ava_frame_collection.__len__()-1:
+                    index = new_collection.index(self.ava_frame_collection[i+1])
+                    our_element = new_collection[index]
+                else:
+                    our_element = new_collection[0]
+                our_element.encounter_character.is_my_step = True
+                our_element.actual_step = True
+                our_element.is_my_step.config(text="↓")
+            self.ava_frame_collection[i].destroy()
+
+        if new_collection.__len__() == 1 and self.encounter.is_start:
+            new_collection[0].encounter_character.is_my_step = True
+            new_collection[0].actual_step = True
+            new_collection[0].is_my_step.config(text="↓")
+
+        self.ava_frame_collection = new_collection
+
+
+    def get_addable_list(self, parent, is_enemy):
+        addable_char_frame = tk.Frame(parent, bg="grey")
+        for character in Character.objects:
+            char_frame = self.get_char_detail(addable_char_frame, character, is_enemy)
+            char_frame.pack(padx=10, pady=10)
+        return addable_char_frame
+
+    def get_char_detail(self, parent, character, is_enemy):
+        char_frame = tk.Frame(parent, bg="white")
+
+        image_tk = ImageWorks.get_image_tk(character.image, 70, 70)
+        image = tk.Label(char_frame, image=image_tk, width=70, height=70)
+        image.image = image_tk
+        image.grid(row=0, column=0, rowspan=4)
+
+        GenericLabel(char_frame, text=character.name, font_weight="bold").grid(row=0, column=1)
+        GenericLabel(char_frame, text=f"{character.dnd_class.name} - {character.level} ур.", bg="white", font_size=12).grid(row=1, column=1)
+        GenericLabel(char_frame, text=f"Max hp: {character.max_hp}", bg="white", font_size=12).grid(row=2, column=1)
+        ttk.Button(char_frame, text="Добавить", command=lambda: self.add_to_frame(character, is_enemy)).grid(row=3, column=1)
+
+        return char_frame
+
+    def get_add_enemies_visible(self):
+        if self.add_enemies_frame.winfo_manager() == "pack":
+            self.add_enemies_frame.pack_forget()
         else:
-            is_my_step.config(text="-")
-        is_my_step.pack(padx=3, pady=3)
+            self.add_enemies_frame.pack()
+
+    def get_add_heroes_visible(self):
+        if self.add_heroes_frame.winfo_manager() == "pack":
+            self.add_heroes_frame.pack_forget()
+        else:
+            self.add_heroes_frame.pack()
+
+    def add_to_frame(self, character, is_enemy):
+        new_enc_char = EncounterCharacter.create_new(character, self.encounter, is_enemy)
+        if is_enemy:
+            char_frame = EncounterCharacterSubFrame(self.enemies_frame_characters, new_enc_char)
+        else:
+            char_frame = EncounterCharacterSubFrame(self.heroes_frame_characters, new_enc_char)
+        char_frame.pack(padx=10, pady=10)
+        self.encounter.add_encounter_character(new_enc_char)
+        self.remake_avatars_frames()
+
+    def start(self):
+        self.encounter.start()
+        self.step_button.grid(row=0, column=1, padx=5, pady=5)
+        self.complete_button.grid(row=0, column=2, padx=5, pady=5)
+        self.start_button.grid_forget()
+        self.remake_avatars_frames()
+
+    def make_step(self):
+        self.encounter.make_step()
+        self.remake_avatars_frames()
+        self.stage_label.config(text=f"Ход: {self.encounter.stage}")
+
+    def complete(self):
+        self.encounter.complete()
+        self.step_button.grid_forget()
+        self.complete_button.grid_forget()
+        enc_frame = GamePage.encounters[self.encounter]
+        enc_frame.config(bg="grey")
+
+
+class AvaFrameSubFrame(tk.Frame):
+    def __init__(self, parent, enc_char):
+        background = "red" if enc_char.is_enemy else "white"
+        super().__init__(parent, bg=background)
+        self.is_my_step = GenericLabel(self, bg=background, font_size="10")
+        if enc_char.is_my_step:
+            self.is_my_step.config(text="↓")
+        else:
+            self.is_my_step.config(text="-")
+        self.is_my_step.pack()
+
+        self.encounter_character = enc_char
+        self.char_initiative = enc_char.initiative
+        self.actual_step = enc_char.is_my_step
 
         image_tk = ImageWorks.get_image_tk(enc_char.character.image, 70, 70)
-        image = tk.Label(ava_frame, image=image_tk, width=70, height=70)
+        image = tk.Label(self, image=image_tk, width=70, height=70)
         image.image = image_tk
         image.pack()
+        GenericLabel(self, text=enc_char.character.name, bg=background, font_size=7).pack()
 
-        if enc_char.is_enemy:
-            ava_frame.config(bg="red")
+    def __eq__(self, other):
+        return self.encounter_character == other.encounter_character
 
-        GenericLabel(ava_frame, text=enc_char.character.name, bg="white", font_size=7).pack()
-        return ava_frame
 
-    def get_character_frame(self, character, is_enemy):
-        if is_enemy:
-            char_frame = tk.Frame(self.enemies_frame_characters, bg="white")
-        else:
-            char_frame = tk.Frame(self.heroes_frame_characters, bg="white")
+class EncounterCharacterSubFrame(tk.Frame):
+    def __init__(self, parent, character):
+        super().__init__(parent, bg="white")
 
-        image_tk = ImageWorks.get_image_tk(character.character.image, 150, 200)
-        image = tk.Label(char_frame, image=image_tk, width=150, height=200)
+        self.character = character
+        self.encounter_page = parent.master.master.master.master.master
+
+        image_tk = ImageWorks.get_image_tk(character.character.image, 70, 70)
+        image = tk.Label(self, image=image_tk, width=70, height=70)
         image.image = image_tk
         image.grid(row=0, column=0, rowspan=5)
 
-        GenericLabel(char_frame, text=character.character.name, bg="white").grid(row=0, column=1, columnspan=4)
-        GenericLabel(char_frame, text=character.character.dnd_class.name, bg="white", font_size=12).grid(row=1, column=1, columnspan=4)
-        GenericLabel(char_frame, text=f"Инициатива: {character.initiative}", bg="white", font_size=12).grid(row=2, column=1, columnspan=4)
-        GenericLabel(char_frame, text=f"❤: {character.hp}/{character.max_hp}", bg="white", font_size=12).grid(row=3, column=1, columnspan=4)
+        GenericLabel(self, text=character.character.name, bg="white").grid(row=0, column=1, columnspan=4)
+        GenericLabel(self, text=character.character.dnd_class.name, bg="white").grid(row=1, column=1, columnspan=4)
+        self.initiative_label = GenericLabel(self, text=f"Инициатива: {character.initiative}", bg="white")
+        self.hp_label = GenericLabel(self, text=f"❤: {character.hp}/{character.max_hp}", bg="white")
+        self.initiative_label.grid(row=2, column=1, columnspan=4)
+        self.hp_label.grid(row=3, column=1, columnspan=4)
 
-        ttk.Button(char_frame, text="Инициатива").grid(row=4, column=1)
-        ttk.Button(char_frame, text="Лечение").grid(row=4, column=2)
-        ttk.Button(char_frame, text="Урон").grid(row=4, column=3)
-        ttk.Button(char_frame, text="Удалить").grid(row=4, column=4)
-        return char_frame
+        ttk.Button(self, text="Инициатива", command=lambda: self.get_entry("initiative")).grid(row=4, column=1)
+        ttk.Button(self, text="Лечение", command=lambda: self.get_entry("heal")).grid(row=4, column=2)
+        ttk.Button(self, text="Урон", command=lambda: self.get_entry("damage")).grid(row=4, column=3)
+        ttk.Button(self, text="Удалить", command=lambda: self.delete()).grid(row=4, column=4)
+
+        self.entry_frame = tk.Frame(self, bg="white")
+        self.int_entry = IntEntry(self.entry_frame)
+        self.entry_button = ttk.Button(self.entry_frame, text="ОК")
+        self.int_entry.grid(row=0, column=0)
+        self.entry_button.grid(row=0, column=1)
+
+        self.opened_entry_type = None
+
+    def get_entry(self, button_type):
+        if self.opened_entry_type == button_type:
+            self.entry_frame.grid_forget()
+            self.opened_entry_type = None
+        else:
+            self.int_entry.clear()
+            self.opened_entry_type = button_type
+            self.entry_frame.grid(row=5, column=0, columnspan=5)
+            if button_type == "damage":
+                self.entry_button.config(command=lambda: self.damage())
+            elif button_type == "heal":
+                self.entry_button.config(command=lambda: self.heal())
+            elif button_type == "initiative":
+                self.entry_button.config(command=lambda: self.initiative())
+
+    def damage(self):
+        self.character.get_damage(int(self.int_entry.get()))
+        self.hp_label.config(text=f"❤: {self.character.hp}/{self.character.max_hp}")
+        self.get_entry("damage")
+
+    def heal(self):
+        self.character.get_health(int(self.int_entry.get()))
+        self.hp_label.config(text=f"❤: {self.character.hp}/{self.character.max_hp}")
+        self.get_entry("heal")
+
+    def initiative(self):
+        self.character.set_initiative(int(self.int_entry.get()))
+        self.initiative_label.config(text=f"Инициатива: {self.character.initiative}")
+        self.encounter_page.encounter.sort_encounter_characters()
+        self.encounter_page.remake_avatars_frames()
+        self.get_entry("initiative")
+
+    def delete(self):
+        self.encounter_page.encounter.delete_encounter_character(self.character)
+        self.encounter_page.remake_avatars_frames()
+        self.destroy()
 

@@ -61,6 +61,9 @@ class IntEntry(ttk.Entry):
                 if self.max_value is not None and int(self.var.get()) > self.max_value:
                     self.var.set(str(self.max_value))
 
+    def clear(self):
+        self.var.set("")
+
 class BooleanCheckbox(ttk.Checkbutton):
     def __init__(self, parent, *args, **kwargs):
         self.boolean_var = tk.BooleanVar()
@@ -70,6 +73,7 @@ class BooleanCheckbox(ttk.Checkbutton):
 
     def get(self):
         return self.boolean_var.get()
+
 
 
 
