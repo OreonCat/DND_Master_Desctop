@@ -36,6 +36,7 @@ class MainApp(tk.Tk):
             frame = page(self.container, self)
             self.frames[page] = frame
             frame.grid(row=0, column=0, sticky="nsew")
+        self.show_frame(StartPage)
 
     def add_to_frame(self, page, page_name, pure_data: None):
         frame = page(self.container, self, pure_data)

@@ -1,7 +1,3 @@
-import datetime
-
-from PIL import ImageTk
-
 from api import ApiConnection, ImageWorks
 from base_types import AppFrame, GenericLabel, SrollFrame, BookDataComboBox, IntEntry, BooleanCheckbox
 import tkinter.ttk as ttk
@@ -520,9 +516,12 @@ class GamesPage(SrollFrame):
 
         self.controller = controller
         games = Game.get_all()
+        self.games_frame = tk.Frame(self.new_frame, bg="#fcca9a")
         for game in games:
             game_frame = self.get_game_frame(game)
             game_frame.pack(padx=10, pady=10)
+        ttk.Button(self.new_frame, text="Новая игра", command= lambda: self.open_new_game_creation()).pack(padx=10, pady=10)
+        self.new_game_frame = NewGameSubframe(parent=self.new_frame, controller=self.controller)
 
     def get_game_frame(self, game):
         game_frame = tk.Frame(self.new_frame, bg="white")
@@ -538,6 +537,51 @@ class GamesPage(SrollFrame):
         name_for_button = game.name
         ttk.Button(game_frame, text="Перейти", command=lambda: self.controller.show_frame(name_for_button)).grid(row=2, column=1)
         return game_frame
+
+    def open_new_game_creation(self):
+        if self.new_game_frame.winfo_manager() == "pack":
+            self.new_game_frame.pack_forget()
+        else:
+            self.new_game_frame.pack()
+
+class NewGameSubframe(tk.Frame):
+    def __init__(self, parent, controller):
+        super().__init__(parent, bg="white")
+        self.controller = controller
+
+        GenericLabel(self, text="Создание персонажа", background="white", font_weight="bold").pack(padx=10, pady=10)
+        self.fields_frame = tk.Frame(self, bg="white")
+
+        GenericLabel(self.fields_frame, text="Название", background="white", font_size=10).grid(row=0, column=0, padx=10, pady=10)
+        GenericLabel(self.fields_frame, text="Изображение", background="white", font_size=10).grid(row=1, column=0, padx=10, pady=10)
+
+        self.name_field = ttk.Entry(self.fields_frame)
+        image_choose_button = ttk.Button(self.fields_frame, text="Выбрать", command=lambda: self.choose_image())
+        self.chosen_image_link = None
+        self.chosen_image_label = GenericLabel(self.fields_frame, text="", bg="white")
+
+        self.name_field.grid(row=0, column=1, padx=10, pady=10)
+        image_choose_button.grid(row=1, column=1, padx=10, pady=10)
+        self.chosen_image_label.grid(row=2, column=0, columnspan=2, padx=10, pady=10)
+        ttk.Button(self.fields_frame, text="Создать", command=lambda: self.create()).grid(row=3, column=0, columnspan=2, padx=10, pady=10)
+
+        self.fields_frame.pack(padx=10, pady=10)
+
+    def choose_image(self):
+        text = ImageWorks.select_image_from_system()
+        self.chosen_image_link = text
+        self.chosen_image_label.config(text=text)
+
+    def check_required_fields(self):
+        return self.name_field.get() != "" and self.chosen_image_link is not None
+
+    def create(self):
+        if self.check_required_fields():
+            is_created = Game.create(self.name_field.get(), self.chosen_image_link)
+            if is_created:
+                self.controller.remake_container()
+        else:
+            print("PIZDA PIZDA PIZDA")
 
 
 class GamePage(SrollFrame):
@@ -580,6 +624,8 @@ class GamePage(SrollFrame):
         self.encounters_list_frame.pack(padx=10, pady=10)
         ttk.Button(self.encounters_frame, text="Новая битва", command=lambda: self.encounter_create()).pack(padx=10, pady=10)
         self.encounters_frame.pack(padx=10, pady=10)
+
+        ttk.Button(self.new_frame, text="Синхронизировать", command=lambda: self.sync_game()).pack(padx=10, pady=10)
 
     def get_character_frame(self, character, parent, add_action=False):
         char_frame = tk.Frame(parent, bg="white")
@@ -641,6 +687,10 @@ class GamePage(SrollFrame):
         new_encounter = Encounter.create_new(self.game.characters, self.game)
         new_enc_frame = self.get_encounter_frame(new_encounter)
         new_enc_frame.pack(padx=10, pady=10)
+
+    def sync_game(self):
+        self.game.save()
+        self.controller.remake_container()
 
 class EncounterPage(SrollFrame):
     def __init__(self, parent, controller, encounter):

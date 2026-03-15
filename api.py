@@ -11,6 +11,7 @@ class ApiConnection:
     api_link = "http://127.0.0.1:8000/api/"
     token_file = "token.txt"
     username = None
+    user_id = None
     __token = None
 
     @classmethod
@@ -35,7 +36,7 @@ class ApiConnection:
             with open(image, "rb") as image_file:
                 files = {"image": (image_name, image_file, mime_type)}
                 response = requests.post(full_link, data=data, files=files, headers={'Authorization': cls.__get_token()})
-        return response.status_code
+        return response
 
     @classmethod
     def update(cls, update_link, pk, data, image=None):
@@ -51,10 +52,16 @@ class ApiConnection:
         return response.status_code
 
     @classmethod
+    def delete(cls, delete_link, pk):
+        full_link = cls.api_link + delete_link + str(pk)
+        response = requests.delete(full_link, headers={'Authorization': cls.__get_token()})
+        return response.status_code
+
+    @classmethod
     def login(cls, username, password):
         print("Старт логина")
         p_link = "auth/token/login"
-        post_result = cls.post(p_link, {"username": username, "password": password})
+        post_result = cls.post(p_link, {"username": username, "password": password}).json()
         if post_result.get("auth_token") is not None:
             token = post_result["auth_token"]
             f = open(cls.token_file, "w")
@@ -100,7 +107,9 @@ class ApiConnection:
         if not cls.is_authenticated():
             return None
         if cls.username is None:
-            cls.username = cls.get("my_username")["username"]
+            request_username = cls.get("my_username")
+            cls.username = request_username["username"]
+            cls.user_id = int(request_username["id"])
         return cls.username
 
 #http://127.0.0.1:8000/media/characters/photo_2025-11-23_10-16-40.jpg

@@ -195,8 +195,8 @@ class Character:
             response = ApiConnection.post(cls.create_link, new_char, image)
         else:
             response = ApiConnection.post(cls.create_link, new_char)
-        print(response)
-        return response == 201
+        print(response.status_code)
+        return response.status_code == 201
 
 
     @classmethod
@@ -315,14 +315,22 @@ class TimeUsedObject:
     def rebuild_time(cls, str_time_element: str):
         if str_time_element is None:
             return None
-        time_element = datetime.strptime(str_time_element, cls.date_time_format_api)
-        return datetime.strftime(time_element, cls.date_time_format)
+        try:
+            time_element = datetime.strptime(str_time_element, cls.date_time_format_api)
+        except Exception:
+            return str_time_element
+        else:
+            return datetime.strftime(time_element, cls.date_time_format)
+
 
     @classmethod
     def rebuild_time_api(cls, str_time_element: str):
         if str_time_element is None:
             return None
-        time_element = datetime.strptime(str_time_element, cls.date_time_format)
+        try:
+            time_element = datetime.strptime(str_time_element, cls.date_time_format)
+        except Exception:
+            return str_time_element
         return datetime.strftime(time_element, cls.date_time_format_api)
 
     @classmethod
@@ -334,6 +342,8 @@ class TimeUsedObject:
         return datetime.strftime(datetime.now(), cls.date_time_format_api)
 
 class EncounterCharacter:
+    create_link = "encounter_characters/create"
+    update_link = "encounter_characters/update/"
     def __init__(self, api_request, encounter, is_new=False):
         self.id = api_request["id"]
         self.character = Character.get_object_by_id(api_request["character"])
@@ -360,6 +370,27 @@ class EncounterCharacter:
     def set_initiative(self, initiative):
         self.initiative = initiative
 
+    def save(self):
+        new_data = {
+            "character": self.character.id,
+            "is_enemy": self.is_enemy,
+            "initiative": self.initiative,
+            "is_my_step": self.is_my_step,
+            "hp": self.hp,
+            "max_hp": self.max_hp,
+            "encounter": self.encounter.id,
+        }
+
+        if self.id is None:
+            result = ApiConnection.post(self.create_link, new_data)
+            status_code = result.status_code
+            print("link creation")
+        else:
+            status_code = ApiConnection.update(self.update_link, self.id, new_data)
+            print("encounter character update")
+
+        print(f"status_code: {status_code}")
+
 
     @classmethod
     def create_new(cls, character, encounter, is_enemy):
@@ -373,9 +404,13 @@ class EncounterCharacter:
             "hp": character.hp,
             "max_hp": character.max_hp,
         }
-        return cls(for_construct, encounter, is_new=True)
+        new_enc_char = cls(for_construct, encounter, is_new=True)
+        return new_enc_char
 
 class Encounter:
+    create_link = "encounters/create"
+    update_link = "encounters/update/"
+    enc_char_delete_link = "encounter_characters/delete/"
     def __init__(self, api_request, game):
         self.id = api_request["id"]
         self.stage = api_request["stage"]
@@ -384,9 +419,12 @@ class Encounter:
         self.time_start = TimeUsedObject.rebuild_time(api_request["time_start"])
         self.time_end = TimeUsedObject.rebuild_time(api_request["time_end"])
         self.encounter_characters = []
+        self.base_list_enc_characters = []
         self.game = game
         for enc_character in api_request["encounter_characters"]:
-            self.encounter_characters.append(EncounterCharacter(enc_character, self))
+            new_enc_char = EncounterCharacter(enc_character, self)
+            self.encounter_characters.append(new_enc_char)
+            self.base_list_enc_characters.append(new_enc_char)
         self.sort_encounter_characters()
 
     def sort_encounter_characters(self):
@@ -435,15 +473,46 @@ class Encounter:
             "encounter_characters": [],
         }
         new_encounter = cls(new_data, game)
+        game.encounters.append(new_encounter)
         for character in characters:
             new_enc_char = EncounterCharacter.create_new(character, new_encounter, False)
             new_encounter.add_encounter_character(new_enc_char)
         return new_encounter
 
+    def save(self):
+        new_data = {
+            "stage": self.stage,
+            "is_start": self.is_start,
+            "is_complete": self.is_complete,
+            "game": self.game.id,
+            "time_start": TimeUsedObject.rebuild_time_api(self.time_start),
+            "time_end": TimeUsedObject.rebuild_time_api(self.time_end),
+        }
+        if self.id is None:
+            print("new encounter")
+            result = ApiConnection.post(self.create_link, new_data)
+            result_json = result.json()
+            self.id = result_json["id"]
+            status_code = result.status_code
+        else:
+            print("edit encounter")
+            status_code = ApiConnection.update(self.update_link, self.id, new_data)
+        print(f"Status Code: {status_code}")
+
+        for base_character in self.base_list_enc_characters:
+            if base_character not in self.encounter_characters:
+                ApiConnection.delete(self.enc_char_delete_link, base_character.id)
+
+        for character in self.encounter_characters:
+            character.save()
+
+
 
 
 class Game(TimeUsedObject):
     get_link = "games"
+    create_link = "games/create"
+    update_link = "games/update/"
     def __init__(self, api_request):
         self.id = api_request['id']
         self.name = api_request['name']
@@ -469,8 +538,32 @@ class Game(TimeUsedObject):
             new_games.append(cls(api_object))
         return new_games
 
+    @classmethod
+    def create(cls, name, image):
+        new_game_infoset = {
+            "id": None,
+            "name": name,
+            "master": ApiConnection.user_id
+        }
+        image = ImageWorks.copy_image_to_program(image)
+        response = ApiConnection.post(cls.create_link, new_game_infoset, image)
+        print(response.status_code)
+        return response.status_code == 201
+
+
     def remove_character(self, character):
         self.characters.remove(character)
 
     def add_character(self, character):
         self.characters.append(character)
+
+    def save(self):
+        update_json = {
+            "characters": []
+        }
+        for character in self.characters:
+            update_json["characters"].append(character.id)
+        result = ApiConnection.update(self.update_link, self.id, update_json)
+        print(f"update game: {self.name} status code = {result}")
+        for encounter in self.encounters:
+            encounter.save()
